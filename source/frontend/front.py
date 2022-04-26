@@ -11,7 +11,7 @@ absolute_path = os.path.abspath(__file__)
 
 # adding /backend to use functions from it here
 sys.path.insert(0, "/".join(os.path.dirname(absolute_path).split('/')[:-1]))
-from backend.calc import *
+from ..backend.calc import *
 
 # ../../resource/data/1_M450.MEA
 with open("/".join(os.path.dirname(absolute_path).split('/')[:-2]) + "/resource/data/1_M450.MEA") as f:
