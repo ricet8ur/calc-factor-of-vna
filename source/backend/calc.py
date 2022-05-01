@@ -36,7 +36,8 @@ def prepare_data(freq, re, im):
 
 
 def solution(data):
-    """ takes projections of equation (8) on vectors e1, e2, e3 and solves the equations"""
+    """ takes projections of equation (8) on vectors e1, e2, e3 and solves the equations.
+     It is also gives matrix of equation"""
     c = []  # matrix of the system
     b = []  # matrix extension
     for i in range(3):
@@ -46,23 +47,56 @@ def solution(data):
         c.append([c1, c2, c3])
         b.append(np.vdot(data[i], data[4] * data[3]))
     a = np.linalg.solve(c, b)
-    return a
+    c = np.array(c)
+    d = np.linalg.inv(c)  # inverse of matrix c
+    return a, c, d
 
 
 def q_factor(a):
     """calculation of result"""
     Ql = a[2].imag  # Q-factor of loaded resonator
-    d = abs(a[1] - a[0] / a[2])  # diameter of circle
-    k = 1 / (2 / d - 1)
+    diam = abs(a[1] - a[0] / a[2])  # diameter of circle
+    k = 1 / (2 / diam - 1)
     Q = Ql * (1 + k)  # Q-factor = result
-    return Q
+    return Ql, diam, k, Q
 
 
-def calculate(path):
-    """applies all functions"""
-    freq, re, im = open_file(path)
+def recalculation_of_data(data, a, c, d, error=False):
+    """preparation data for the next iteration of solving system"""
+    # data = np.array([e1, e2, e3, gamma, p], dtype=complex), t = e1, 1 = e2
+    eps = np.array(a[0]*data[0] + a[1]*data[1] - a[2]*data[0]*data[3] - data[3], dtype=complex)
+    # eps is eq(7) line's errors
+    S2 = np.dot(abs(data[4]), abs(eps)*abs(eps))  # the weighted squared sum of errors
+    sigma2A = []  # the square of standart deviation coefficients a
+    temp = c[0][0]*d[0][0] + c[1][1]*d[1][1] + c[2][2]*d[2][2]
+    for i in range(3):
+        sigma2A.append(d[i][i] * S2 / temp)
+    for i in range(len(data[4])):  # recalculation of weight coefficients P
+        data[4][i] = 1/(data[0][i]**2 * sigma2A[0] + sigma2A[1] + data[0][i]**2 * sigma2A[2] * (abs(data[3][i])**2))
+    if error:
+        return abs(np.array(sigma2A))
+    else:
+        return data
+
+
+def random_deviation(a, sigma2A, diam, k, Ql):
+    """defines standart deviations of values"""
+    sigmaQl = sigma2A[2]**0.5
+    sigmaDiam = (sigma2A[0]/(abs(a[2])**2) + sigma2A[1] + abs(a[0]/a[2]/a[2])**2 * sigma2A[2])**0.5
+    sigmaK = 2*sigmaDiam/((2-diam)**2)
+    sigmaQ0 = ((1 + k)**2 * sigma2A[2] + Ql**2 * sigmaK**2)**0.5
+    return sigmaQ0
+
+
+def apply(filename):
+    freq, re, im = open_file(filename)
     data = prepare_data(freq, re, im)
-    a = solution(data)
-    Q = q_factor(a)
-    return Q
+    a, c, d = solution(data)
+    for i in range(2, 10):
+        data = recalculation_of_data(data, a, c, d)
+        a, c, d = solution(data)
+        Ql, diam, k, Q = q_factor(a)
+        sigma2A = recalculation_of_data(data, a, c, d, error=True)
+        sigmaQ0 = random_deviation(a, sigma2A, diam, k, Ql)
+        print(f"Q = {Q} +- {sigmaQ0}, if i == {i}".format(Q, sigmaQ0, i))
 
