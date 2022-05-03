@@ -84,12 +84,19 @@ if len(data) > 0:
     f,r,i,validator_status = unpack_data(data)
     
     calc_data = prepare_data(f, r, i)
-    a = solution(calc_data)
-    Q = q_factor(a)
-    st.write(Q)
+    a,c,d = solution(calc_data)
+    sigmaQ0=0
+    for i in range(2, 10):
+        calc_data = recalculation_of_data(calc_data, a, c, d)
+        a, c, d = solution(calc_data)
+        Ql, diam, k, Q = q_factor(a)
+        sigma2A = recalculation_of_data(calc_data, a, c, d, error=True)
+        sigmaQ0 = random_deviation(a, sigma2A, diam, k, Ql)
+    st.write(f"Q = {Q} +- {sigmaQ0}".format(Q, sigmaQ0))
+        
 
 
-st.write(validator_status)
+st.write("Status: " +validator_status)
 
 if len(data) > 0:
     f,r,i,validator_status = unpack_data(data)
