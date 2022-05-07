@@ -14,7 +14,7 @@ sys.path.append("/".join(os.path.dirname(absolute_path).split('/')[:-1]))
 # print("/".join(os.path.dirname(absolute_path).split('/')[:-1]))
 from backend.calc import *
 
-def plot_data(r,i):
+def plot_data(r,i, g):
     # unit circle
     unit_circle_x = []
     unit_circle_y = []
@@ -34,7 +34,13 @@ def plot_data(r,i):
     #
 
     # data
-    ax.plot(r, i)
+    ax.plot(r, i, 'b+')
+    #
+
+    #cirlce approximation
+    t=np.linspace(0,1,100)
+    z = (g[0]*t+g[1])/(g[2]+1)
+    ax.plot(z.real,z.imag)
     #
 
     ax.grid(True)
@@ -80,25 +86,19 @@ def unpack_data(data):
 
 validator_status = 'nice'
 # calculate
+circle_params=[]
 if len(data) > 0:
     f,r,i,validator_status = unpack_data(data)
     
-    calc_data = prepare_data(f, r, i)
-    a,c,d = solution(calc_data)
-    sigmaQ0=0
-    for i in range(2, 10):
-        calc_data = recalculation_of_data(calc_data, a, c, d)
-        a, c, d = solution(calc_data)
-        Ql, diam, k, Q = q_factor(a)
-        sigma2A = recalculation_of_data(calc_data, a, c, d, error=True)
-        sigmaQ0 = random_deviation(a, sigma2A, diam, k, Ql)
-    st.write(f"Q = {Q} +- {sigmaQ0}".format(Q, sigmaQ0))
-        
+    Q0,sigmaQ0,QL,sigmaQl, circle_params =fl_fitting(f,r,i)
+    st.write("Cable attenuation")
+    st.write(f"Q0 = {Q0} +- {sigmaQ0}, epsilon Q0 ={sigmaQ0/Q0}")
+    st.write(f"QL = {QL} +- {sigmaQl}, epsilon QL ={sigmaQl/QL}")
 
 
 st.write("Status: " +validator_status)
 
 if len(data) > 0:
     f,r,i,validator_status = unpack_data(data)
-    plot_data(r,i)
+    plot_data(r,i,circle_params)
   
