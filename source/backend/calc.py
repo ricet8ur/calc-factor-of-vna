@@ -19,7 +19,7 @@ def open_file(path):
 
 def prepare_data(freq, re, im, fl=[]):
     """the function takes raw data and gives vectors of eq (8)"""
-    # finding fl from the point with smaller magnitude if argument not provided
+    # finding fl from the point with smallest magnitude if argument not provided
     if type(fl) is list and len(fl)==0:
         s = abs(np.array(re) + np.array(im)*1j)
         # frequency of loaded resonance
@@ -113,7 +113,8 @@ def fl_fitting(freq, re, im):
     data, fl = prepare_data(freq, re, im)
     a, c, d = solution(data)
 
-    # 1.189 of Qfactor Matlab
+    # Repeated curve fitting
+    # 1.189 of Qfactor Matlab 
     fl2 = 0
     g_d=0
     g_c=0

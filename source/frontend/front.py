@@ -80,8 +80,8 @@ def unpack_data(data):
     for x in data:
         a, b, c = (float(y) for y in x.split())
         f.append(a)  # frequency
-        r.append(b)  # Re of something
-        i.append(c)  # Im of something
+        r.append(b)  # Re of S11
+        i.append(c)  # Im of S11
     return f, r, i, 'very nice'
 
 validator_status = 'nice'
