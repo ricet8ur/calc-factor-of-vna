@@ -1,5 +1,4 @@
 from cmath import atan
-from multiprocessing import Queue
 import numpy as np
 
 
@@ -15,12 +14,11 @@ def open_file(path):
             re.append(float(temp[1]))
             im.append(float(temp[2]))
     return freq, re, im
-
-
-def prepare_data(freq, re, im, fl=[]):
+ 
+def prepare_data(freq, re, im, fl=None):
     """the function takes raw data and gives vectors of eq (8)"""
     # finding fl from the point with smallest magnitude if argument not provided
-    if type(fl) is list and len(fl)==0:
+    if fl is None:
         s = abs(np.array(re) + np.array(im)*1j)
         # frequency of loaded resonance
         fl = freq[list(abs(s)).index(min(abs(s)))]
@@ -115,9 +113,9 @@ def fl_fitting(freq, re, im):
 
     # Repeated curve fitting
     # 1.189 of Qfactor Matlab 
-    fl2 = 0
-    g_d=0
-    g_c=0
+    # fl2 = 0
+    # g_d=0
+    # g_c=0
     for x in range(0, 3):
         g_c = (np.conj(a[2])*a[1]-a[0])/(np.conj(a[2])-a[2])
         g_d = a[0]/a[2]
