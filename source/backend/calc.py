@@ -1,3 +1,5 @@
+from cmath import atan
+from multiprocessing import Queue
 import numpy as np
 
 
@@ -15,12 +17,17 @@ def open_file(path):
     return freq, re, im
 
 
-def prepare_data(freq, re, im):
+def prepare_data(freq, re, im, fl=[]):
     """the function takes raw data and gives vectors of eq (8)"""
-    fl = freq[re.index(max(re))]
-    # fl is the frequency of loaded resonance
+    # finding fl from the point with smallest magnitude if argument not provided
+    if type(fl) is list and len(fl)==0:
+        s = abs(np.array(re) + np.array(im)*1j)
+        # frequency of loaded resonance
+        fl = freq[list(abs(s)).index(min(abs(s)))]
+
+    # frequency of unloaded resonance.
     f0 = fl
-    # f0 is the frequency of unloaded resonance
+    # f0 = fl does not decrease the accuracy if Q >> 100 
     e1, e2, e3, gamma, p = [], [], [], [], []
     for i in range(0, len(freq)):
         # filling vectors
@@ -31,9 +38,8 @@ def prepare_data(freq, re, im):
         e3.append(-t * g)
         gamma.append(g)
         p.append(1 / (1 + t ** 2 * (1 + re[i] ** 2 + im[i] ** 2)))
-    data = np.array([e1, e2, e3, gamma, p], dtype=complex)
-    return data
-
+    data = np.array([e1, e2, e3, gamma, p], dtype=np.cdouble)
+    return data, fl
 
 def solution(data):
     """ takes projections of equation (8) on vectors e1, e2, e3 and solves the equations.
@@ -46,8 +52,8 @@ def solution(data):
         c3 = np.vdot(data[i], data[4] * data[2])
         c.append([c1, c2, c3])
         b.append(np.vdot(data[i], data[4] * data[3]))
-    a = np.linalg.solve(c, b)
     c = np.array(c)
+    a = np.linalg.solve(c, b)
     d = np.linalg.inv(c)  # inverse of matrix c
     return a, c, d
 
@@ -85,7 +91,7 @@ def random_deviation(a, sigma2A, diam, k, Ql):
     sigmaDiam = (sigma2A[0]/(abs(a[2])**2) + sigma2A[1] + abs(a[0]/a[2]/a[2])**2 * sigma2A[2])**0.5
     sigmaK = 2*sigmaDiam/((2-diam)**2)
     sigmaQ0 = ((1 + k)**2 * sigma2A[2] + Ql**2 * sigmaK**2)**0.5
-    return sigmaQ0
+    return sigmaQ0, sigmaQl
 
 
 def apply(filename):
@@ -97,6 +103,52 @@ def apply(filename):
         a, c, d = solution(data)
         Ql, diam, k, Q = q_factor(a)
         sigma2A = recalculation_of_data(data, a, c, d, error=True)
-        sigmaQ0 = random_deviation(a, sigma2A, diam, k, Ql)
-        print(f"Q = {Q} +- {sigmaQ0}, if i == {i}".format(Q, sigmaQ0, i))
+        sigmaQ0, sigmaQl = random_deviation(a, sigma2A, diam, k, Ql)
+        print(f"Q = {Q} +- {sigmaQ0}, if i == {i}")
 
+
+def fl_fitting(freq, re, im):
+    """providing an option to find actual fl"""
+
+    data, fl = prepare_data(freq, re, im)
+    a, c, d = solution(data)
+
+    # Repeated curve fitting
+    # 1.189 of Qfactor Matlab 
+    fl2 = 0
+    g_d=0
+    g_c=0
+    for x in range(0, 3):
+        g_c = (np.conj(a[2])*a[1]-a[0])/(np.conj(a[2])-a[2])
+        g_d = a[0]/a[2]
+        g_2 = 2*g_c-g_d
+        dt = (a[1]-g_2)/(g_2*a[2]-a[0])
+        fl2 = fl*(1 + np.real(dt)/2)
+        data, fl = prepare_data(freq, re, im, fl2)
+        a, c, d = solution(data)
+
+    for i in range(2, 20):
+        data = recalculation_of_data(data, a, c, d)
+        a, c, d = solution(data)
+
+        Ql, diam, k, Q = q_factor(a)
+        sigma2A = recalculation_of_data(data, a, c, d, error=True)
+        sigmaQ0, sigmaQl = random_deviation(a, sigma2A, diam, k, Ql)
+
+    # taking into account coupling losses on page 69 of Qfactor Matlab
+    # to get results similar to example program 
+    if False:
+        phi1=np.arctan(np.double(g_d.imag/g_d.real)) # 1.239
+        phi2=np.arctan(np.double((g_c.imag-g_d.imag)/(g_c.real-g_d.real)))
+        phi=-phi1+phi2
+        d_s=(1-np.abs(g_d)**2)/(1-np.abs(g_d)*np.cos(phi))
+        diam = abs(a[1] - a[0] / a[2])
+        qk=1/(d_s/diam-1)
+
+        sigma2A = recalculation_of_data(data, a, c, d, error=True)
+        sigmaQ0 = random_deviation(a, sigma2A, diam, k, Ql)
+        Q = Ql * (1 + qk)  # Q-factor = result
+        print(f"Q0 = {Q} +- {sigmaQ0}")
+    
+    return Q,sigmaQ0, Ql, sigmaQl,a
+    
