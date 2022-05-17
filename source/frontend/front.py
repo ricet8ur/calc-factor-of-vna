@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
   
-
+### don't do it this way!
 import os
 absolute_path = os.path.abspath(__file__)
 # print("Full path: " + absolute_path)
@@ -61,7 +61,7 @@ def plot_data(r,i, g):
 #         i.append(c)  # Im of something
 #     plot_data(r,i)
 
-
+### move all that into to a function
 data = []
 uploaded_file = st.file_uploader('Upload a csv')
 if uploaded_file is not None:
