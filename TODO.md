@@ -4,7 +4,7 @@
     * What does it do?
     * What is Q circle?
     * What data formats are supported?
-2. Change startup file to main.py and remove os and sys calls from frontend. Pass calc function to frontend function as an argument.
+2. [x] Change startup file to main.py and remove os and sys calls from frontend. Pass calc function to frontend function as an argument.
 3. Add validation of separator + convertor to std backend input
 4. Should we apply corrections for coupling losses? - yes, please add this option.
 5. Draw continuous Q circle on a Smith chart using coefficients a[0..2]
