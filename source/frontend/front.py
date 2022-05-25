@@ -1,6 +1,7 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
 def plot_data(r,i, g):
     # unit circle
@@ -24,7 +25,8 @@ def plot_data(r,i, g):
     # data
     ax.plot(r, i, 'b+')
     #
-
+    ax.xlabel("x")
+    ax.ylabel("y")
     #cirlce approximation
     t=np.linspace(0,1,100)
     z = (g[0]*t+g[1])/(g[2]+1)
@@ -50,16 +52,33 @@ def run(calc_function):
     select_data_format = col1.selectbox('Choose data format from a list',['Frequency, Re(S11), Im(S11)','Frequency, Re(Zin), Im(Zin)'])
 
     select_separator = col2.selectbox('Choose separator',['","' ,'" "','";"'])
-
-
+    select_coupling_losses = st.checkbox('I want to apply corrections for coupling losses (lossy coupling)')
+    def is_float(element) -> bool:
+        try:
+            float(element)
+            val = float(element)
+            if math.isnan(val) or math.isinf(val):
+                raise ValueError
+            return True
+        except ValueError:
+            return False
     def unpack_data(data):
-        f, r, i = [], [], []  
-        for x in data:
-            a, b, c = (float(y) for y in x.split())
-            f.append(a)  # frequency
-            r.append(b)  # Re of S11
-            i.append(c)  # Im of S11
+        f, r, i = [], [], []
+        if select_data_format == 'Frequency, Re(S11), Im(S11)':
+            for x in range(len(data)):
+                tru = data[x].split(select_separator)
+                if len(tru)!=3:
+                    return f, r, i, 'Bad line in your file. №:' + str(x)
+                a, b, c = (y for y in tru)
+                if not ((is_float(a)) or (is_float(b)) or (is_float(c))):
+                    return f, r, i, 'Bad data. Your data isnt numerical type. Number of bad line:' + str(x)
+                f.append(a)  # frequency
+                r.append(b)  # Re of S11
+                i.append(c)  # Im of S11
+        else:
+            return f, r, i, 'Bad data format'
         return f, r, i, 'very nice'
+
 
     validator_status = 'nice'
     # calculate
