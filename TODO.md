@@ -11,7 +11,7 @@
 6. Add axes labels to a Smith chart
 7. Pretty-print results and errors (7 digits after dot). Try latex output.
 8. Plot second chart: abs(S11) from f
-9. Add impedance data format (only frontend):
+9. Add impedance 5
     * additional field for omega
     * convertion to reflection coeffitient (how?)
 10. Codestyle fix:
