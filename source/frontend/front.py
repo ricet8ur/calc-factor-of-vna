@@ -1,40 +1,57 @@
+import math
+
+XLIM = [-1.1, 1.1]
+YLIM = [-1.1, 1.1]
+
+
+def round_up(x, n=7):
+    if x == 0:
+        return 0
+    deg = math.floor(math.log(abs(x), 10))
+    return (10 ** deg) * round(x / (10 ** deg), n - 1)
+
+
+def circle(ax, x, y, radius, color='#1946BA'):
+    from matplotlib.patches import Ellipse
+    circle = Ellipse((x, y), radius * 2, radius * 2, clip_on=False,
+                     zorder=2, linewidth=2, edgecolor=color, facecolor=(0, 0, 0, .0125))
+    ax.add_artist(circle)
+
+
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_data(r,i, g):
+
+def plot_data(r, i, g):
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot()
+    ax.set_xlim(XLIM)
+    ax.set_ylim(YLIM)
+    major_ticks = np.arange(-1.0, 1.1, 0.25)
+    minor_ticks = np.arange(-1.1, 1.1, 0.05)
+    ax.set_xticks(major_ticks)
+    ax.set_xticks(minor_ticks, minor=True)
+    ax.set_yticks(major_ticks)
+    ax.set_yticks(minor_ticks, minor=True)
+    ax.grid(which='major', color='grey', linewidth=1.5)
+    ax.grid(which='minor', color='grey', linewidth=0.5, linestyle=':')
+    plt.xlabel(r'$Re(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
+    plt.ylabel('$Im(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
+    plt.title('Smith chart', fontsize=24, fontname="Cambria")
+    # cirlce approximation
+    radius = abs(g[1] - g[0] / g[2]) / 2
+    x = ((g[1] + g[0] / g[2]) / 2).real
+    y = ((g[1] + g[0] / g[2]) / 2).imag
+    circle(ax, x, y, radius, color='#FF8400')
+    #
     # unit circle
-    unit_circle_x = []
-    unit_circle_y = []
-    for x in np.arange(-1, 1, 0.01):
-        unit_circle_x.append(x)
-        unit_circle_y.append((1-x**2)**0.5)
-
-    unit_circle_x.append(1)
-    unit_circle_y.append(0)
-
-    for x in np.arange(-1, 1, 0.01)[::-1]:
-        unit_circle_x.append(x)
-        unit_circle_y.append(-(1-x**2)**0.5)
-
-    fig, ax = plt.subplots()
-    ax.plot(unit_circle_x, unit_circle_y)
+    circle(ax, 0, 0, 1)
     #
-
     # data
-    ax.plot(r, i, 'b+')
+    ax.plot(r, i, 'b+', ms=10, mew=2, color='#1946BA')
     #
 
-    #cirlce approximation
-    t=np.linspace(0,1,100)
-    z = (g[0]*t+g[1])/(g[2]+1)
-    ax.plot(z.real,z.imag)
-    #
-
-    ax.grid(True)
-    ax.axis('square')
-    ax.set_yticks(np.arange(-1, 1.2, 0.2))
-    ax.set_yticks(np.arange(-1, 1.2, 0.2))
     st.pyplot(fig)
 
 
@@ -44,16 +61,15 @@ def run(calc_function):
     if uploaded_file is not None:
         data = uploaded_file.readlines()
 
-
     col1, col2 = st.columns(2)
 
-    select_data_format = col1.selectbox('Choose data format from a list',['Frequency, Re(S11), Im(S11)','Frequency, Re(Zin), Im(Zin)'])
+    select_data_format = col1.selectbox('Choose data format from a list',
+                                        ['Frequency, Re(S11), Im(S11)', 'Frequency, Re(Zin), Im(Zin)'])
 
-    select_separator = col2.selectbox('Choose separator',['","' ,'" "','";"'])
-
+    select_separator = col2.selectbox('Choose separator', ['","', '" "', '";"'])
 
     def unpack_data(data):
-        f, r, i = [], [], []  
+        f, r, i = [], [], []
         for x in data:
             a, b, c = (float(y) for y in x.split())
             f.append(a)  # frequency
@@ -63,19 +79,21 @@ def run(calc_function):
 
     validator_status = 'nice'
     # calculate
-    circle_params=[]
+    circle_params = []
     if len(data) > 0:
-        f,r,i,validator_status = unpack_data(data)
+        f, r, i, validator_status = unpack_data(data)
 
-        Q0,sigmaQ0,QL,sigmaQl, circle_params =calc_function(f,r,i)
+        Q0, sigmaQ0, QL, sigmaQl, circle_params = calc_function(f, r, i)
+        Q0 = round_up(Q0)
+        sigmaQ0= round_up(sigmaQ0)
+        QL = round_up(QL)
+        sigmaQl = round_up(sigmaQl)
         st.write("Cable attenuation")
-        st.write(f"Q0 = {Q0} +- {sigmaQ0}, epsilon Q0 ={sigmaQ0/Q0}")
-        st.write(f"QL = {QL} +- {sigmaQl}, epsilon QL ={sigmaQl/QL}")
+        st.latex(r'Q_0 =' + f'{Q0} \pm {sigmaQ0},  ' + r'\;\;\varepsilon_{Q_0} =' + f'{round_up(sigmaQ0 / Q0)}')
+        st.latex(r'Q_L =' + f'{QL} \pm {sigmaQl},  ' + r'\;\;\varepsilon_{Q_L} =' + f'{round_up(sigmaQl / QL)}')
 
-
-    st.write("Status: " +validator_status)
+    st.write("Status: " + validator_status)
 
     if len(data) > 0:
-        f,r,i,validator_status = unpack_data(data)
-        plot_data(r,i,circle_params)
-    
+        f, r, i, validator_status = unpack_data(data)
+        plot_data(r, i, circle_params)
