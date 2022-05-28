@@ -55,6 +55,23 @@ def plot_data(r, i, g):
     st.pyplot(fig)
 
 
+def plot_ref_from_f(r, i, f):
+    fig = plt.figure(figsize=(10, 10))
+    abs_S = list(math.sqrt(r[n] ** 2 + i[n] ** 2) for n in range(len(r)))
+    xlim = [min(f)-abs(max(f)-min(f))*0.1, max(f)+abs(max(f)-min(f))*0.1]
+    ylim = [min(abs_S)-abs(max(abs_S)-min(abs_S))*0.5, max(abs_S)+abs(max(abs_S)-min(abs_S))*0.5]
+    ax = fig.add_subplot()
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    ax.grid(which='major', color='k', linewidth=1)
+    ax.grid(which='minor', color='grey', linestyle=':', linewidth=0.5)
+    plt.xlabel(r'$f,\; 1/c$', color='gray', fontsize=16, fontname="Cambria")
+    plt.ylabel('$|\Gamma|$', color='gray', fontsize=16, fontname="Cambria")
+    plt.title('Modulus of  reflection coefficient from frequency', fontsize=24, fontname="Cambria")
+    ax.plot(f, abs_S, 'b+', ms=10, mew=2, color='#1946BA')
+    st.pyplot(fig)
+
+
 def run(calc_function):
     data = []
     uploaded_file = st.file_uploader('Upload a csv')
@@ -85,7 +102,7 @@ def run(calc_function):
 
         Q0, sigmaQ0, QL, sigmaQl, circle_params = calc_function(f, r, i)
         Q0 = round_up(Q0)
-        sigmaQ0= round_up(sigmaQ0)
+        sigmaQ0 = round_up(sigmaQ0)
         QL = round_up(QL)
         sigmaQl = round_up(sigmaQl)
         st.write("Cable attenuation")
@@ -97,3 +114,4 @@ def run(calc_function):
     if len(data) > 0:
         f, r, i, validator_status = unpack_data(data)
         plot_data(r, i, circle_params)
+        plot_ref_from_f(r, i, f)
