@@ -25,12 +25,15 @@ def plot_data(r,i, g):
     # data
     ax.plot(r, i, 'b+')
     #
-    ax.xlabel("x")
-    ax.ylabel("y")
     #cirlce approximation
-    t=np.linspace(0,1,100)
-    z = (g[0]*t+g[1])/(g[2]+1)
-    ax.plot(z.real,z.imag)
+    # g_c = (np.conj(g[2])*g[1]-g[0])/(np.conj(g[2])-g[2])
+    # g_d = g[0]/g[2]
+    # radius = abs(g_c-g_d)
+    # p=[[],[]]
+    # for alpha in range(0,360):
+    #     p[0].append(g_c.real+radius*math.cos(math.radians(alpha)))
+    #     p[1].append(g_c.imag+radius*math.sin(math.radians(alpha)))
+    # ax.plot(p[0],p[1])
     #
 
     ax.grid(True)
@@ -51,8 +54,9 @@ def run(calc_function):
 
     select_data_format = col1.selectbox('Choose data format from a list',['Frequency, Re(S11), Im(S11)','Frequency, Re(Zin), Im(Zin)'])
 
-    select_separator = col2.selectbox('Choose separator',['","' ,'" "','";"'])
+    select_separator = col2.selectbox('Choose separator',['" "' ,'","','";"'])
     select_coupling_losses = st.checkbox('I want to apply corrections for coupling losses (lossy coupling)')
+    
     def is_float(element) -> bool:
         try:
             float(element)
@@ -62,19 +66,30 @@ def run(calc_function):
             return True
         except ValueError:
             return False
+
     def unpack_data(data):
+        nonlocal select_separator
+        nonlocal select_data_format
         f, r, i = [], [], []
         if select_data_format == 'Frequency, Re(S11), Im(S11)':
             for x in range(len(data)):
-                tru = data[x].split(select_separator)
+                # print(select_separator)
+                select_separator=select_separator.replace('\"','')
+                if select_separator==" ":
+                    tru = data[x].split()
+                else:
+                    data[x]=data[x].replace(select_separator,' ')
+                    tru = data[x].split()
+
+
                 if len(tru)!=3:
                     return f, r, i, 'Bad line in your file. №:' + str(x)
                 a, b, c = (y for y in tru)
                 if not ((is_float(a)) or (is_float(b)) or (is_float(c))):
                     return f, r, i, 'Bad data. Your data isnt numerical type. Number of bad line:' + str(x)
-                f.append(a)  # frequency
-                r.append(b)  # Re of S11
-                i.append(c)  # Im of S11
+                f.append(float(a))  # frequency
+                r.append(float(b))  # Re of S11
+                i.append(float(c))  # Im of S11
         else:
             return f, r, i, 'Bad data format'
         return f, r, i, 'very nice'
@@ -96,5 +111,7 @@ def run(calc_function):
 
     if len(data) > 0:
         f,r,i,validator_status = unpack_data(data)
-        plot_data(r,i,circle_params)
+        if validator_status == 'very nice':
+            plot_data(r,i,circle_params)
+
     
