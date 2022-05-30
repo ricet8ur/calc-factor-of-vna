@@ -149,4 +149,3 @@ def fl_fitting(freq, re, im):
         print(f"Q0 = {Q} +- {sigmaQ0}")
     
     return Q,sigmaQ0, Ql, sigmaQl,a
-    
