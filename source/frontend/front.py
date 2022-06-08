@@ -102,6 +102,8 @@ def run(calc_function):
             for x in range(len(data)):
                 # print(select_separator)
                 select_separator = select_separator.replace('\"', '')
+                if type(data[x])==bytes:
+                    data[x]=data[x].decode()
                 if select_separator == " ":
                     tru = data[x].split()
                 else:
@@ -126,14 +128,15 @@ def run(calc_function):
     if len(data) > 0:
         f, r, i, validator_status = unpack_data(data)
 
-        Q0, sigmaQ0, QL, sigmaQl, circle_params = calc_function(f, r, i)
-        Q0 = round_up(Q0)
-        sigmaQ0 = round_up(sigmaQ0)
-        QL = round_up(QL)
-        sigmaQl = round_up(sigmaQl)
-        st.write("Cable attenuation")
-        st.latex(r'Q_0 =' + f'{Q0} \pm {sigmaQ0},  ' + r'\;\;\varepsilon_{Q_0} =' + f'{round_up(sigmaQ0 / Q0)}')
-        st.latex(r'Q_L =' + f'{QL} \pm {sigmaQl},  ' + r'\;\;\varepsilon_{Q_L} =' + f'{round_up(sigmaQl / QL)}')
+        if validator_status == 'very nice':
+            Q0, sigmaQ0, QL, sigmaQl, circle_params = calc_function(f, r, i)
+            Q0 = round_up(Q0)
+            sigmaQ0 = round_up(sigmaQ0)
+            QL = round_up(QL)
+            sigmaQl = round_up(sigmaQl)
+            st.write("Cable attenuation")
+            st.latex(r'Q_0 =' + f'{Q0} \pm {sigmaQ0},  ' + r'\;\;\varepsilon_{Q_0} =' + f'{round_up(sigmaQ0 / Q0)}')
+            st.latex(r'Q_L =' + f'{QL} \pm {sigmaQl},  ' + r'\;\;\varepsilon_{Q_L} =' + f'{round_up(sigmaQl / QL)}')
 
     st.write("Status: " + validator_status)
 
