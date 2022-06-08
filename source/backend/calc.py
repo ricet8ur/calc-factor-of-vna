@@ -95,6 +95,7 @@ def recalculating(data, a, c, d, n, printing=False):
         sigmaQ0, sigmaQl = random_deviation(a, sigma2A, diam, k, Ql)
         if printing:
             print(f"Q = {Q} +- {sigmaQ0}, if i == {i}")
+        return a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data
 
 
 def random_deviation(a, sigma2A, diam, k, Ql):
@@ -110,7 +111,7 @@ def apply(filename):
     freq, re, im = open_file(filename)
     data = prepare_data(freq, re, im)
     a, c, d = solution(data)
-    recalculating(data, a, c, d, 10, printing=True)
+    a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data = recalculating(data, a, c, d, 10, printing=True)
 
 
 def fl_fitting(freq, re, im):
@@ -132,7 +133,7 @@ def fl_fitting(freq, re, im):
         fl2 = fl * (1 + np.real(dt) / 2)
         data, fl = prepare_data(freq, re, im, fl2)
         a, c, d = solution(data)
-    recalculating(data, a, c, d, 20)
+    a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data = recalculating(data, a, c, d, 20)
 
     # taking into account coupling losses on page 69 of Qfactor Matlab
     # to get results similar to example program 
