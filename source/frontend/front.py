@@ -1,4 +1,7 @@
 import math
+import streamlit as st
+import matplotlib.pyplot as plt
+import numpy as np
 
 XLIM = [-1.1, 1.1]
 YLIM = [-1.1, 1.1]
@@ -13,15 +16,9 @@ def round_up(x, n=7):
 
 def circle(ax, x, y, radius, color='#1946BA'):
     from matplotlib.patches import Ellipse
-    circle = Ellipse((x, y), radius * 2, radius * 2, clip_on=False,
-                     zorder=2, linewidth=2, edgecolor=color, facecolor=(0, 0, 0, .0125))
-    ax.add_artist(circle)
-
-
-import streamlit as st
-import matplotlib.pyplot as plt
-import numpy as np
-import math
+    drawn_circle = Ellipse((x, y), radius * 2, radius * 2, clip_on=False,
+                           zorder=2, linewidth=2, edgecolor=color, facecolor=(0, 0, 0, .0125))
+    ax.add_artist(drawn_circle)
 
 
 def plot_data(r, i, g):
@@ -40,7 +37,7 @@ def plot_data(r, i, g):
     plt.xlabel(r'$Re(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
     plt.ylabel('$Im(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
     plt.title('Smith chart', fontsize=24, fontname="Cambria")
-    # cirlce approximation
+    # circle approximation
     radius = abs(g[1] - g[0] / g[2]) / 2
     x = ((g[1] + g[0] / g[2]) / 2).real
     y = ((g[1] + g[0] / g[2]) / 2).imag
@@ -59,8 +56,8 @@ def plot_data(r, i, g):
 def plot_ref_from_f(r, i, f):
     fig = plt.figure(figsize=(10, 10))
     abs_S = list(math.sqrt(r[n] ** 2 + i[n] ** 2) for n in range(len(r)))
-    xlim = [min(f)-abs(max(f)-min(f))*0.1, max(f)+abs(max(f)-min(f))*0.1]
-    ylim = [min(abs_S)-abs(max(abs_S)-min(abs_S))*0.5, max(abs_S)+abs(max(abs_S)-min(abs_S))*0.5]
+    xlim = [min(f) - abs(max(f) - min(f)) * 0.1, max(f) + abs(max(f) - min(f)) * 0.1]
+    ylim = [min(abs_S) - abs(max(abs_S) - min(abs_S)) * 0.5, max(abs_S) + abs(max(abs_S) - min(abs_S)) * 0.5]
     ax = fig.add_subplot()
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
@@ -81,11 +78,12 @@ def run(calc_function):
 
     col1, col2 = st.columns(2)
 
-    select_data_format = col1.selectbox('Choose data format from a list',['Frequency, Re(S11), Im(S11)','Frequency, Re(Zin), Im(Zin)'])
+    select_data_format = col1.selectbox('Choose data format from a list',
+                                        ['Frequency, Re(S11), Im(S11)', 'Frequency, Re(Zin), Im(Zin)'])
 
-    select_separator = col2.selectbox('Choose separator',['" "' ,'","','";"'])
+    select_separator = col2.selectbox('Choose separator', ['" "', '","', '";"'])
     select_coupling_losses = st.checkbox('Apply corrections for coupling losses (lossy coupling)')
-    
+
     def is_float(element) -> bool:
         try:
             float(element)
@@ -103,26 +101,24 @@ def run(calc_function):
         if select_data_format == 'Frequency, Re(S11), Im(S11)':
             for x in range(len(data)):
                 # print(select_separator)
-                select_separator=select_separator.replace('\"','')
-                if select_separator==" ":
+                select_separator = select_separator.replace('\"', '')
+                if select_separator == " ":
                     tru = data[x].split()
                 else:
-                    data[x]=data[x].replace(select_separator,' ')
+                    data[x] = data[x].replace(select_separator, ' ')
                     tru = data[x].split()
 
-
-                if len(tru)!=3:
+                if len(tru) != 3:
                     return f, r, i, 'Bad line in your file. №:' + str(x)
                 a, b, c = (y for y in tru)
                 if not ((is_float(a)) or (is_float(b)) or (is_float(c))):
-                    return f, r, i, 'Bad data. Your data isnt numerical type. Number of bad line:' + str(x)
+                    return f, r, i, 'Bad data. Your data isn\'t numerical type. Number of bad line:' + str(x)
                 f.append(float(a))  # frequency
                 r.append(float(b))  # Re of S11
                 i.append(float(c))  # Im of S11
         else:
             return f, r, i, 'Bad data format'
         return f, r, i, 'very nice'
-
 
     validator_status = 'nice'
     # calculate
@@ -145,4 +141,4 @@ def run(calc_function):
         f, r, i, validator_status = unpack_data(data)
         if validator_status == 'very nice':
             plot_data(r, i, circle_params)
-            plot_ref_from_f(r, i, f)        
+            plot_ref_from_f(r, i, f)
