@@ -5,6 +5,6 @@ RUN pip install -r requirements.txt
 EXPOSE 8501
 COPY . /app
 ENTRYPOINT ["streamlit", "run"]
-CMD ["./source/main.py"]
+CMD ["./source/main.py", "--browser.serverAddress=0.0.0.0"]
 # docker build -t calc-q-factor:latest .
 # docker run -p 8501:8501 calc-q-factor:latest
