@@ -5,10 +5,10 @@
     * What is Q circle?
     * What data formats are supported?
 2. [x] Add validation of separator + convertor to std backend input
-3. Should we apply corrections for coupling losses? - yes, please add this option.
+3. [x] Should we apply corrections for coupling losses? - yes, please add this option.
 4. [x] Draw continuous Q circle on a Smith chart using coefficients a[0..2]
 5. [x] Add axes labels to a Smith chart
-6. Pretty-print results and errors (7 digits after dot). Try latex output.
+6. [x] Pretty-print results and errors (7 digits after dot). Try latex output.
 7. Advanced output options (only frontend):
     * Option to choose output values precision
 8. Add approximation for second chart (abs(S11) from f)
@@ -32,4 +32,4 @@
 13. Do we need to calculate systematic errors? - yes, if its not too hard.
 14. Add direct support for output files from different vna models
 15. Make charts more interactive
-16. Make an option to pass the whole program to .html site as a iframe
+16. Make an option to pass the whole program to .html site as a iframe? - no, Just docker container?

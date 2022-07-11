@@ -4,3 +4,4 @@ matplotlib
 numpy
 # sympy?
 streamlit_echarts
+streamlit-ace
