@@ -47,7 +47,7 @@ def plot_data(r, i, g):
     try:
         st.pyplot(fig)
     except:
-        st.write("Plot size is too big, check your input")
+        st.write("Plot size is too big. There are some problems with fitting. Check your input")
 
 
 interval_range = (0, 100)
@@ -171,14 +171,14 @@ def run(calc_function):
                         except:
                             break
                     break
-            data_format_snp = False
         return 1, 0, 0, 50
+    
 
-
-    def unpack_data(data, input_start_line, input_end_line, hz):
+    def unpack_data(data, input_start_line, input_end_line):
         nonlocal select_measurement_parameter
         nonlocal select_data_representation
         f, r, i = [], [], []
+        return_status='data parsed'
         for x in range(input_start_line-1, input_end_line):
             if len(data[x])<2 or data[x][0]== '!' or data[x][0]=='#' or data[x][0]=='%' or data[x][0]=='/':
                 # first is a comment line according to .snp documentation,
@@ -188,26 +188,49 @@ def run(calc_function):
             line = data[x].split()
             # always at least 3 values for single data point
             if len(line) < 3:
-                return f, r, i, 'Can\'t parse line №: ' + str(x) + ',\n not enough arguments (less than 3)'
-            if select_measurement_parameter == 'S':
-                a, b, c = (y for y in line)
-                if not ((is_float(a)) or (is_float(b)) or (is_float(c))):
-                    return f, r, i, 'Wrong data type, expected number. Error on line: ' + str(x)
-            else:
-                return f, r, i, 'Wrong data format'
+                return_status = 'Can\'t parse line №: ' + str(x) + ',\n not enough arguments (less than 3)'
+                break
+            a,b,c=[],[],[]
+            try:
+                a, b, c = (line[y] for y in range(min(len(line),3)))
+                    # for x in input_data_columns.keys():
+                    #     if x=='f':
 
-            f.append(float(a)*hz)  # frequency
-            r.append(float(b))  # Re of S
-            i.append(float(c))  # Im of S
-        return f, r, i, 'data parsed'
+                    #     elif x=='r':
+
+                    #     elif x=='i':
+            except:
+                return_status = 'Can\'t parse line №: ' + str(x) + ',\n not enough arguments'
+                break    
+            if not ((is_float(a)) or (is_float(b)) or (is_float(c))):
+                return_status = 'Wrong data type, expected number. Error on line: ' + str(x)
+                break
+            a,b,c=(float(x) for x in (a,b,c))
+            f.append(a)  # frequency
+            if select_data_representation == 'Frequency, real, imaginary':
+                r.append(b)  # Re
+                i.append(c)  # Im
+            elif select_data_representation == 'Frequency, magnitude, angle':
+                r.append(b*np.cos(np.deg2rad(c)))  # Re
+                i.append(b*np.sin(np.deg2rad(c)))  # Im
+            elif select_data_representation == 'Frequency, db, angle':
+                b=10**(b/20)
+                r.append(b*np.sin(np.deg2rad(c)))  # Re
+                i.append(b*np.cos(np.deg2rad(c)))  # Im
+            else:
+                return_status = 'Wrong data format'
+                break
+
+
+        return f, r, i, return_status
 
     # make accessible specific range of numerical data choosen with interactive plot 
     global interval_range, interval_start, interval_end
 
     data = []
-    data_format_snp = False
     uploaded_file = st.file_uploader('Upload a csv')
     if uploaded_file is not None:
+        data_format_snp = False
         data = uploaded_file.readlines()
         if uploaded_file.name[-4:-2]=='.s' and uploaded_file.name[-1]== 'p':
             data_format_snp = True
@@ -229,7 +252,8 @@ def run(calc_function):
                                                       select_measurement_parameter)
             select_data_representation = col1.selectbox('Data representation',
                                                     ['Frequency, real, imaginary',
-                                                     'Frequency, magnitude, angle'],
+                                                     'Frequency, magnitude, angle',
+                                                     'Frequency, db, angle'],
                                                      select_data_representation)
             if select_measurement_parameter=='Z':
                 input_ref_resistance = col1.number_input(
@@ -239,7 +263,9 @@ def run(calc_function):
             input_end_line = col1.number_input(
                 "Last line of data:", min_value=1, max_value=len(data), value=len(data))
 
-            f, r, i, validator_status = unpack_data(data, input_start_line, input_end_line, hz)
+            f, r, i, validator_status = unpack_data(data, input_start_line, input_end_line)
+            f = f * hz  # to hz
+
             # Ace editor to show choosen data columns and rows
             with col2.expander("File preview"):
                 # web development is fundamentally imposible without such hacks
@@ -278,7 +304,8 @@ def run(calc_function):
                 'Apply corrections for coupling losses (lossy coupling)')
             f_cut, r_cut, i_cut = (x[interval_start:interval_end]
                                    for x in (f, r, i))
-
+            # for x in range(len(f_cut)):
+                # print(f_cut[x], r_cut[x], i_cut[x])
             if validator_status == 'data parsed':
                 Q0, sigmaQ0, QL, sigmaQl, circle_params = calc_function(
                     f_cut, r_cut, i_cut, select_coupling_losses)

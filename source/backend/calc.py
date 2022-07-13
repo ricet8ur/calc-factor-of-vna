@@ -52,7 +52,7 @@ def solution(data):
         c3 = np.vdot(data[i], data[4] * data[2])
         c.append([c1, c2, c3])
         b.append(np.vdot(data[i], data[4] * data[3]))
-    c = np.array(c)
+    # c = np.array(c)
     a = np.linalg.solve(c, b)
     d = np.linalg.inv(c)  # inverse of matrix c
     return a, c, d
@@ -95,7 +95,7 @@ def recalculating(data, a, c, d, n, printing=False):
         sigmaQ0, sigmaQl = random_deviation(a, sigma2A, diam, k, Ql)
         if printing:
             print(f"Q = {Q} +- {sigmaQ0}, if i == {i}")
-        return a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data
+    return a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data
 
 
 def random_deviation(a, sigma2A, diam, k, Ql):
