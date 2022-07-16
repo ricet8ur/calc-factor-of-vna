@@ -5,7 +5,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 
-XLIM = [-1.1, 1.1]
+XLIM = [-1.1, 1.1] # why global...
 YLIM = [-1.1, 1.1]
 
 def circle(ax, x, y, radius, color='#1946BA'):
@@ -21,9 +21,9 @@ def plot_data(r, i, g):
 
     major_ticks = np.arange(-1.0, 1.1, 0.25)
     minor_ticks = np.arange(-1.1, 1.1, 0.05)
-    ax.set_xticks(major_ticks)
+    # ax.set_xticks(major_ticks)
     ax.set_xticks(minor_ticks, minor=True)
-    ax.set_yticks(major_ticks)
+    # ax.set_yticks(major_ticks)
     ax.set_yticks(minor_ticks, minor=True)
     ax.grid(which='major', color='grey', linewidth=1.5)
     ax.grid(which='minor', color='grey', linewidth=0.5, linestyle=':')
@@ -44,13 +44,14 @@ def plot_data(r, i, g):
     #
     ax.set_xlim(XLIM)
     ax.set_ylim(YLIM)
+    # sometimes throws exception
     try:
         st.pyplot(fig)
     except:
         st.write("Plot size is too big. There are some problems with fitting. Check your input")
 
 
-interval_range = (0, 100)
+interval_range = (0, 100) # in percents
 interval_start, interval_end = 0, 0
 
 
@@ -100,9 +101,11 @@ def plot_interact_abs_from_f(f, r, i):
         "dataZoom": "function(params) { return [params.start, params.end] }",
     }
 
+    # show echart with dataZoom and update intervals based on output
     interval_range = st_echarts(
         options=options, events=events, height="500px", key="render_basic_bar_events"
     )
+
     if interval_range is None:
         interval_range = (0, 100)
 
@@ -110,7 +113,7 @@ def plot_interact_abs_from_f(f, r, i):
     interval_start, interval_end = (
         int(n*interval_range[id]*0.01) for id in (0, 1))
 
-
+# plot (abs(S))(f) chart with pyplot
 def plot_ref_from_f(f, r, i):
     fig = plt.figure(figsize=(10, 10))
     abs_S = list((r[n] ** 2 + i[n] ** 2)**0.5 for n in range(len(r)))
@@ -184,12 +187,15 @@ def run(calc_function):
                 # first is a comment line according to .snp documentation,
                 # others detects comments in various languages
                 continue
-            data[x] = data[x].replace(';', ' ').replace(',', ' ')
+            data[x] = data[x].replace(';', ' ').replace(',', ' ') # generally we expect these chars as seperators
             line = data[x].split()
+
             # always at least 3 values for single data point
             if len(line) < 3:
                 return_status = 'Can\'t parse line №: ' + str(x) + ',\n not enough arguments (less than 3)'
                 break
+
+            # 1: process according to data_placement
             a,b,c=[],[],[]
             try:
                 a, b, c = (line[y] for y in range(min(len(line),3)))
@@ -207,6 +213,8 @@ def run(calc_function):
                 break
             a,b,c=(float(x) for x in (a,b,c))
             f.append(a)  # frequency
+
+            # 2: process according to data_representation
             if select_data_representation == 'Frequency, real, imaginary':
                 r.append(b)  # Re
                 i.append(c)  # Im
@@ -221,12 +229,14 @@ def run(calc_function):
                 return_status = 'Wrong data format'
                 break
 
+            # 3: process according to measurement_parameter
 
         return f, r, i, return_status
 
     # make accessible specific range of numerical data choosen with interactive plot 
     global interval_range, interval_start, interval_end
 
+    # file upload button
     data = []
     uploaded_file = st.file_uploader('Upload a csv')
     if uploaded_file is not None:
@@ -234,7 +244,7 @@ def run(calc_function):
         data = uploaded_file.readlines()
         if uploaded_file.name[-4:-2]=='.s' and uploaded_file.name[-1]== 'p':
             data_format_snp = True
-
+    
     validator_status = '...'
     ace_preview_markers = []
 
@@ -268,13 +278,15 @@ def run(calc_function):
 
             # Ace editor to show choosen data columns and rows
             with col2.expander("File preview"):
-                # web development is fundamentally imposible without such hacks
-                # if we have so little 'official' functionality in libs and this lack of documentation
+                # So little 'official' functionality in libs and lack of documentation
+                # therefore beware: css hacks 
 
                 # yellow ~ ace_step
                 # light yellow ~ ace_highlight-marker
                 # green ~ ace_stack
                 # red ~ ace_error-marker
+
+                # no more good colors included in streamlit_ace for marking
 
                 # st.markdown('''<style>
                 # .choosen_option_1
@@ -282,12 +294,16 @@ def run(calc_function):
                 # color: rgb(49, 51, 63);
                 # }</style>''', unsafe_allow_html=True)
 
-                # markdown injection does not work, since ace is in a different .html accessible via iframe
+                # markdown injection does not seems to work, since ace is in a different .html accessible via iframe
+
                 # markers format:
                 #[{"startRow": 2,"startCol": 0,"endRow": 2,"endCol": 3,"className": "ace_error-marker","type": "text"}]
+                
+                # add general marking for choosen data lines? better just mark the problematic lines?
                 ace_preview_markers.append(
                     {"startRow": input_start_line,"startCol": 0,
                     "endRow": input_end_line+1,"endCol": 0,"className": "ace_highlight-marker","type": "text"})
+
                 text_value = "Frequency,Hz  | Re(S11) | Im(S11)\n" + \
                     ''.join(data).strip()
                 st_ace(value=text_value,
@@ -309,10 +325,6 @@ def run(calc_function):
             if validator_status == 'data parsed':
                 Q0, sigmaQ0, QL, sigmaQl, circle_params = calc_function(
                     f_cut, r_cut, i_cut, select_coupling_losses)
-                # Q0 = round_up(Q0)
-                # sigmaQ0 = round_up(sigmaQ0)
-                # QL = round_up(QL)
-                # sigmaQl = round_up(sigmaQl)
                 if select_coupling_losses:
                     st.write("Lossy coupling")
                 else:
