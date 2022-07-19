@@ -28,5 +28,6 @@
 11. Advanced file preview: .snp support for .s2p (or more) 
 12. [x] Make charts more interactive
 13. Make an option to pass the whole program to .html site via iframe? - It works, but where to host?
+14. Add support lines for smith chart?
 <!-- Add direct support for output files from different vna models? Supported formats: .snp, .csv or similar -->
 <!-- Do we need to calculate systematic errors? - yes, if its not too hard. After some considerations... Rather not -->

@@ -1,21 +1,20 @@
 from streamlit_ace import st_ace
-from streamlit_echarts import st_echarts
+from streamlit_echarts import st_echarts, JsCode
 import math
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 
-XLIM = [-1.1, 1.1] # why global...
-YLIM = [-1.1, 1.1]
-
 def circle(ax, x, y, radius, color='#1946BA'):
     from matplotlib.patches import Ellipse
-    drawn_circle = Ellipse((x, y), radius * 2, radius * 2, clip_on=False,
+    drawn_circle = Ellipse((x, y), radius * 2, radius * 2, clip_on=True,
                            zorder=2, linewidth=2, edgecolor=color, facecolor=(0, 0, 0, .0125))
-    ax.add_artist(drawn_circle)
+    try:
+        ax.add_artist(drawn_circle)
+    except:
+        raise
 
-
-def plot_data(r, i, g):
+def plot_smith(r, i, g, r_cut, i_cut):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
 
@@ -30,25 +29,28 @@ def plot_data(r, i, g):
     plt.xlabel(r'$Re(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
     plt.ylabel('$Im(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
     plt.title('Smith chart', fontsize=24, fontname="Cambria")
-    # circle approximation
+
+    # unit circle
+    circle(ax, 0, 0, 1)
+
+    # input data points
+    ax.plot(r, i, '+', ms=8, mew=2, color='#b6c7f4')
+    
+    # choosen data points
+    ax.plot(r_cut, i_cut, '+', ms=8, mew=2, color='#1946BA')
+
+    # circle approximation by calc
     radius = abs(g[1] - g[0] / g[2]) / 2
     x = ((g[1] + g[0] / g[2]) / 2).real
     y = ((g[1] + g[0] / g[2]) / 2).imag
     circle(ax, x, y, radius, color='#FF8400')
-    #
-    # unit circle
-    circle(ax, 0, 0, 1)
-    #
-    # data
-    ax.plot(r, i, '+', ms=10, mew=2, color='#1946BA')
-    #
+
+    XLIM = [-1.1, 1.1]
+    YLIM = [-1.1, 1.1]
     ax.set_xlim(XLIM)
     ax.set_ylim(YLIM)
-    # sometimes throws exception
-    try:
-        st.pyplot(fig)
-    except:
-        st.write("Plot size is too big. There are some problems with fitting. Check your input")
+    st.pyplot(fig)
+
 
 
 interval_range = (0, 100) # in percents
@@ -67,28 +69,37 @@ def plot_interact_abs_from_f(f, r, i):
             "data": f,
             "name": "Hz",
             "nameTextStyle": {"fontSize": 16},
-            "axisLabel": {"fontSize": 16}
+            "axisLabel": {"fontSize": 16},
         },
         "yAxis": {
             "type": "value",
             "name": "abs(S)",
             "nameTextStyle": {"fontSize": 16},
-            "axisLabel": {"fontSize": 16}
+            "axisLabel": {"fontSize": 16},
+            # "axisPointer": {
+            #     "type": 'cross',
+            #     "label": {
+            #     "show":"true",
+            #     "formatter": JsCode(
+            #     "function(info){console.log(info);return 'line ' ;};"
+            #     ).js_code
+            #     }
+            # }
         },
         "series": [{"data": abs_S, "type": "line", "name": "abs(S)"}],
         "height": 300,
         "dataZoom": [{"type": "slider", "start": 0, "end": 100, "height": 100, "bottom": 10}],
         "tooltip": {
-            "trigger": "axis",
-            "axisPointer": {
-                "type": 'cross',
-                # "label": {
-                # "show":"true",
-                # "formatter": JsCode(
-                # "function(info){return info.value;};"
-                # ).js_code
-                # }
-            }
+                "trigger": "axis",
+                "axisPointer": {
+                    "type": 'cross',
+                    # "label": {
+                    # "show":"true",
+                    # "formatter": JsCode(
+                    # "function(info){console.log(info);return 'line ' ;};"
+                    # ).js_code
+                    # }
+                }
         },
         "toolbox": {
             "feature": {
@@ -131,7 +142,7 @@ def plot_ref_from_f(f, r, i):
     plt.title('Absolute value of reflection coefficient from frequency',
               fontsize=24, fontname="Cambria")
 
-    ax.plot(f, abs_S, '+', ms=10, mew=2, color='#1946BA')
+    ax.plot(f, abs_S, '+', ms=8, mew=2, color='#1946BA')
     st.pyplot(fig)
 
 
@@ -237,13 +248,31 @@ def run(calc_function):
     global interval_range, interval_start, interval_end
 
     # file upload button
-    data = []
-    uploaded_file = st.file_uploader('Upload a csv')
-    if uploaded_file is not None:
-        data_format_snp = False
+    uploaded_file = st.file_uploader('Upload a file from your vector analizer. ' +
+        'Make sure the file format is .snp or it has a similar inner structure.')
+    
+    # check .snp
+    data_format_snp = False
+    if uploaded_file is None:
+        st.write("Demonstration: ")
+        # display DEMO
+        data_format_snp = True
+        try:
+            with open('./resource/data/8_default_demo.s1p') as f:
+                data = f.readlines()
+        except:
+            # 'streamlit run' call in the wrong directory. Display smaller demo:
+            data =[line.strip()+'\n' for line in '''# Hz S MA R 50
+                11415403125 0.37010744 92.47802
+                11416090625 0.33831283 92.906929
+                11416778125 0.3069371 94.03318
+                '''.split('\n')]
+    else:
         data = uploaded_file.readlines()
+
         if uploaded_file.name[-4:-2]=='.s' and uploaded_file.name[-1]== 'p':
             data_format_snp = True
+            
     
     validator_status = '...'
     ace_preview_markers = []
@@ -317,20 +346,24 @@ def run(calc_function):
             plot_interact_abs_from_f(f, r, i)
 
             select_coupling_losses = st.checkbox(
-                'Apply corrections for coupling losses (lossy coupling)')
+                'Apply corrections for coupling losses')
+
+            if select_coupling_losses:
+                st.write("Option: Lossy coupling")
+            else:
+                st.write("Option: Cable attenuation")
+
             f_cut, r_cut, i_cut = (x[interval_start:interval_end]
                                    for x in (f, r, i))
-            # for x in range(len(f_cut)):
-                # print(f_cut[x], r_cut[x], i_cut[x])
+
             if validator_status == 'data parsed':
                 Q0, sigmaQ0, QL, sigmaQl, circle_params = calc_function(
                     f_cut, r_cut, i_cut, select_coupling_losses)
-                if select_coupling_losses:
-                    st.write("Lossy coupling")
-                else:
-                    st.write("Cable attenuation")
 
                 out_precision = '0.7f'
+                if Q0 <= 0 or QL <= 0:
+                    st.write("Negative Q detected, fitting may be inaccurate!")
+
                 st.latex(r'Q_0 =' + f'{format(Q0, out_precision)} \pm {format(sigmaQ0, out_precision)},  ' +
                          r'\;\;\varepsilon_{Q_0} =' + f'{format(sigmaQ0 / Q0, out_precision)}')
                 st.latex(r'Q_L =' + f'{format(QL, out_precision)} \pm {format(sigmaQl, out_precision)},  ' +
@@ -341,4 +374,4 @@ def run(calc_function):
     if len(data) > 0 and validator_status == 'data parsed':
         with st.expander("Show static abs(S) plot"):
             plot_ref_from_f(f_cut, r_cut, i_cut)
-        plot_data(r_cut, i_cut, circle_params)
+        plot_smith(r, i, circle_params, r_cut, i_cut)
