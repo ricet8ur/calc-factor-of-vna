@@ -1,7 +1,7 @@
 ##### Usage:
 
 App calculates the quality factor and its random error in the electric circuit
-according to the measurements of the [vector analyzer](https://en.wikipedia.org/wiki/Network_analyzer_(electrical)).
+for the set of [vector analyzer](https://en.wikipedia.org/wiki/Network_analyzer_(electrical)) measuremets.
 
 ##### Input data
 
