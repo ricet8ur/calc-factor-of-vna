@@ -6,4 +6,3 @@ numpy
 streamlit_echarts
 streamlit-ace
 sigfig
-pyperclip
