@@ -1,35 +1,34 @@
 # Todos sorted by importance
 
-1. Add a description for our program.
-    * What does it do?
+1. [x] Add a description for frontend.
+    * What is calculated? The format of the result
     * What is Q circle?
     * What data formats are supported?
-2. [x] Add validation of separator + convertor to std backend input
-3. Should we apply corrections for coupling losses? - yes, please add this option.
-4. [x] Draw continuous Q circle on a Smith chart using coefficients a[0..2]
-5. [x] Add axes labels to a Smith chart
-6. Pretty-print results and errors (7 digits after dot). Try latex output.
-7. Advanced output options (only frontend):
+2. [x] Demo
+3. Support .snp
+    * .s3p and more
+4. [x] Add button to copy choosen fragment to compare with other programs.
+5. [x] Advanced output options (only frontend):
     * Option to choose output values precision
-8. Add approximation for second chart (abs(S11) from f)
-9. Add impedance input option (Z instread of S11)
-    * additional field for omega
-    * convertion to reflection coeffitient (thats how: <https://radioprog.ru/post/195>)
-10. Codestyle fix:
+6. Add approximation for second chart (abs(S) from f)
+7. [x] Add impedance input option (Z)
+    * additional field for omega | from .snp
+    * convertion to reflection coeffitient (explanation: <https://radioprog.ru/post/195>)
+8. Codestyle fix:
     * Format all code files
     * Make a good code structure... If you can.
-11. Make all computations extra precise:
+9. Make all computations extra precise:
     * import sympy.mpmath as mp ..?
     * from sympy.mpmath import *  ..?
     * mp.dps = ~50 or something else.
     * make sure that result' ~ result
     * increase mp.dps while 7 digits after dot are not stable
-
-12. Advanced file loading:
+10. [x] Advanced file loading:
     * Show file preview
     * Options to skip first and last lines
-
-13. Do we need to calculate systematic errors? - yes, if its not too hard.
-14. Add direct support for output files from different vna models
-15. Make charts more interactive
-16. Make an option to pass the whole program to .html site as a iframe
+11. Advanced file preview: highlight choosen data fragments
+12. [x] Make charts more interactive
+13. Make an option to pass the whole program to .html site via iframe? - It works, but where to host?
+14. Add support lines for smith chart?
+<!-- Add direct support for output files from different vna models? Supported formats: .snp, .csv or similar -->
+<!-- Do we need to calculate systematic errors? - yes, if its not too hard. After some considerations... Rather not -->

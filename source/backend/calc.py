@@ -52,7 +52,7 @@ def solution(data):
         c3 = np.vdot(data[i], data[4] * data[2])
         c.append([c1, c2, c3])
         b.append(np.vdot(data[i], data[4] * data[3]))
-    c = np.array(c)
+    # c = np.array(c)
     a = np.linalg.solve(c, b)
     d = np.linalg.inv(c)  # inverse of matrix c
     return a, c, d
@@ -95,7 +95,7 @@ def recalculating(data, a, c, d, n, printing=False):
         sigmaQ0, sigmaQl = random_deviation(a, sigma2A, diam, k, Ql)
         if printing:
             print(f"Q = {Q} +- {sigmaQ0}, if i == {i}")
-        return a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data
+    return a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data
 
 
 def random_deviation(a, sigma2A, diam, k, Ql):
@@ -114,7 +114,7 @@ def apply(filename):
     a, c, d, Ql, diam, k, Q, sigma2A, sigmaQ0, sigmaQl, data = recalculating(data, a, c, d, 10, printing=True)
 
 
-def fl_fitting(freq, re, im):
+def fl_fitting(freq, re, im, correction):
     """providing an option to find actual fl"""
 
     data, fl = prepare_data(freq, re, im)
@@ -137,17 +137,17 @@ def fl_fitting(freq, re, im):
 
     # taking into account coupling losses on page 69 of Qfactor Matlab
     # to get results similar to example program 
-    # if False:
-    #     phi1=np.arctan(np.double(g_d.imag/g_d.real)) # 1.239
-    #     phi2=np.arctan(np.double((g_c.imag-g_d.imag)/(g_c.real-g_d.real)))
-    #     phi=-phi1+phi2
-    #     d_s=(1-np.abs(g_d)**2)/(1-np.abs(g_d)*np.cos(phi))
-    #     diam = abs(a[1] - a[0] / a[2])
-    #     qk=1/(d_s/diam-1)
-    #
-    #     sigma2A = recalculation_of_data(data, a, c, d, error=True)
-    #     sigmaQ0 = random_deviation(a, sigma2A, diam, k, Ql)
-    #     Q = Ql * (1 + qk)  # Q-factor = result
-    #     print(f"Q0 = {Q} +- {sigmaQ0}")
+    if correction:
+        phi1=np.arctan(np.double(g_d.imag/g_d.real)) # 1.239
+        phi2=np.arctan(np.double((g_c.imag-g_d.imag)/(g_c.real-g_d.real)))
+        phi=-phi1+phi2
+        d_s=(1-np.abs(g_d)**2)/(1-np.abs(g_d)*np.cos(phi))
+        diam = abs(a[1] - a[0] / a[2])
+        qk=1/(d_s/diam-1)
+    
+        sigma2A = recalculation_of_data(data, a, c, d, error=True)
+        sigmaQ0, sigmaQl = random_deviation(a, sigma2A, diam, k, Ql)
+        Q = Ql * (1 + qk)  # Q-factor = result
+        # print(f"Q0 = {Q} +- {sigmaQ0}")
 
     return Q, sigmaQ0, Ql, sigmaQl, a
