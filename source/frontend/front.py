@@ -3,7 +3,6 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import sigfig
-import pyperclip
 from streamlit_ace import st_ace
 from streamlit_echarts import st_echarts, JsCode
 
@@ -176,7 +175,7 @@ def run(calc_function):
                     data[x] = data[x].decode('utf-8-sig', 'ignore')
                 except:
                     return 'Not an utf-8-sig line №: ' + str(x)
-        return 'data read: success'
+        return 'data read, but not parsed'
 
     # for Touchstone .snp format
     def parse_heading(data):
@@ -227,6 +226,24 @@ def run(calc_function):
             column_count = len(line)
             break
         return column_count, return_status
+
+    def prepare_snp(data, number):
+        prepared_data = []
+        return_status = 'data read, but not parsed'
+        for x in range(len(data)):
+            line = check_line_comments(data[x])
+            if line is None:
+                continue
+
+            splitted_line = line.split()
+            if number * 2 + 1 == len(splitted_line):
+                prepared_data.append(line)
+            elif number * 2 == len(splitted_line):
+                prepared_data[-1] += line
+            else:
+                return_status = "Parsing error for .snp format on line №" + str(x)
+
+        return prepared_data, return_status
 
     def unpack_data(data, first_column, column_count, ref_resistance, ace_preview_markers):
         nonlocal select_measurement_parameter
@@ -327,7 +344,7 @@ def run(calc_function):
             return_status = 'Choosen data range is too small, add more points'
         elif max(abs(np.array(r)+ 1j* np.array(i))) > 2:
             return_status = 'Your data points have an abnormality:\
-                        they are too far outlise the unit cirlce.\
+                        they are too far outside the unit cirlce.\
                         Make sure the format is correct'
 
         return f, r, i, return_status
@@ -347,10 +364,11 @@ def run(calc_function):
 
     # file upload button
     uploaded_file = st.file_uploader('Upload a file from your vector analizer. \
-        Make sure the file format is .snp or it has a similar inner structure.'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         )
+        Make sure the file format is .snp or it has a similar inner structure.'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       )
 
     # check .snp
     data_format_snp = False
+    data_format_snp_number = 0
     if uploaded_file is None:
         st.write("DEMO: ")
         # display DEMO
@@ -360,15 +378,15 @@ def run(calc_function):
                 data = f.readlines()
         except:
             # 'streamlit run' call in the wrong directory. Display smaller demo:
-            data =[line.strip()+'\n' for line in '''# Hz S MA R 50
-                11415403125 0.37010744 92.47802
-                11416090625 0.33831283 92.906929
-                11416778125 0.3069371 94.03318
-                '''.split('\n')]
+            data =['# Hz S MA R 50\n\
+                11415403125 0.37010744 92.47802\n\
+                11416090625 0.33831283 92.906929\n\
+                11416778125 0.3069371 94.03318']
     else:
         data = uploaded_file.readlines()
         if uploaded_file.name[-4:-2]=='.s' and uploaded_file.name[-1]== 'p':
             data_format_snp = True
+            data_format_snp_number = int(uploaded_file.name[-2])
 
     validator_status = '...'
     ace_preview_markers = []
@@ -379,8 +397,9 @@ def run(calc_function):
     if len(data) > 0:
 
         validator_status = read_data(data)
-        if validator_status == 'data read: success':
+        if validator_status == 'data read, but not parsed':
             hz, select_measurement_parameter, select_data_representation, input_ref_resistance = parse_heading(data)
+
             col1, col2 = st.columns([1,2])
 
             with col1.expander("Processing options"):
@@ -445,21 +464,32 @@ def run(calc_function):
                        markers=ace_preview_markers,
                        height="300px")
 
-            column_count, validator_status = count_columns(data)
+            if data_format_snp and data_format_snp_number >= 3:
+                data, validator_status = prepare_snp(data, data_format_snp_number)
 
+    if validator_status == "data read, but not parsed":
+        column_count, validator_status = count_columns(data)
+
+    f, r, i = [], [], []
     if validator_status == "data parsed":
         input_ports_pair = 1
         if column_count > 3:
-            input_ports_pair = st.number_input(
-                "Pair of data columns (pair of ports)\n with network parameters:",
-                min_value=1,
-                max_value=(column_count - 1) // 2,
-                value=1)
+            pair_count = (column_count - 1) // 2
+            input_ports_pair_id = st.number_input(
+                "Choosen pair of ports with network parameters:",
+                min_value = 1,
+                max_value = pair_count,
+                value = 1) - 1
+            ports_count = round(pair_count **0.5)
+            st.write(select_measurement_parameter +
+                     str(input_ports_pair_id // ports_count + 1) +
+                     str(input_ports_pair_id % ports_count + 1))
+
         f, r, i, validator_status = unpack_data(
             data,(input_ports_pair - 1) * 2 + 1, column_count, input_ref_resistance,
             ace_preview_markers)
         f = [x * hz for x in f]  # to hz
-        
+
     st.write("Use range slider to choose best suitable data interval")
     interval_range, interval_start, interval_end = plot_interact_abs_from_f(f, r, i, interval_range)
 
@@ -468,11 +498,13 @@ def run(calc_function):
         f_cut, r_cut, i_cut = (x[interval_start:interval_end]
                            for x in (f, r, i))
 
-        def copy_to_clip_s_single():
-            pyperclip.copy("# Hz S RI R 50\n" +
-            ''.join(f'{f_cut[x]} {r_cut[x]} {i_cut[x]}\n' for x in range(len(f_cut))))
-
-        st.button("Copy selected data interval to clipboard as .s1p", on_click=copy_to_clip_s_single)
+        with st.expander("Selected data interval as .s1p"):
+            st_ace(value="# Hz S RI R 50\n" +
+            ''.join(f'{f_cut[x]} {r_cut[x]} {i_cut[x]}\n' for x in range(len(f_cut))),
+                       readonly=True,
+                       auto_update=True,
+                       placeholder="Selection is empty",
+                       height="150px")
 
         if len(f_cut) < 3:
             validator_status = "Choosen interval is too small, add more points"
@@ -528,6 +560,4 @@ def run(calc_function):
         with st.expander("Show static abs(S) plot"):
             plot_abs_vs_f(f_cut, r_cut, i_cut)
 
-        select_show_excluded_points = st.checkbox("Show excluded points", value=True)
-
-        plot_smith(r, i, circle_params, r_cut, i_cut, select_show_excluded_points)
+        plot_smith(r, i, circle_params, r_cut, i_cut, st.checkbox("Show excluded points", value=True))
