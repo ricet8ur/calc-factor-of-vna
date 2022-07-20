@@ -2,6 +2,8 @@
 streamlit
 matplotlib
 numpy
-# sympy?
+
 streamlit_echarts
 streamlit-ace
+sigfig
+paperclip

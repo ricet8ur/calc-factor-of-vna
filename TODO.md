@@ -1,16 +1,17 @@
 # Todos sorted by importance
 
-1. Add a description for frontend.
+1. [x] Add a description for frontend.
     * What is calculated? The format of the result
     * What is Q circle?
     * What data formats are supported?
-2. Demo
-3. [x] Support .snp
-4. Add window with copyable fragment of choosen data to compare with other programs.
-5. Advanced output options (only frontend):
+2. [x] Demo
+3. Support .snp
+    * .s3p and more
+4. [x] Add button to copy choosen fragment to compare with other programs.
+5. [x] Advanced output options (only frontend):
     * Option to choose output values precision
-6. Add approximation for second chart (abs(S11) from f)
-7. Add impedance input option (Z)
+6. Add approximation for second chart (abs(S) from f)
+7. [x] Add impedance input option (Z)
     * additional field for omega | from .snp
     * convertion to reflection coeffitient (explanation: <https://radioprog.ru/post/195>)
 8. Codestyle fix:
@@ -25,7 +26,7 @@
 10. [x] Advanced file loading:
     * Show file preview
     * Options to skip first and last lines
-11. Advanced file preview: .snp support for .s2p (or more) 
+11. Advanced file preview: highlight choosen data fragments
 12. [x] Make charts more interactive
 13. Make an option to pass the whole program to .html site via iframe? - It works, but where to host?
 14. Add support lines for smith chart?
