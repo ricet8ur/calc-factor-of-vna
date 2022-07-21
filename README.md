@@ -33,7 +33,7 @@ streamlit run source/main.py
 The measurements made by a vector network analyzer (set of frequencies and corresponding network parameters).
 Main supported file format is .snp, but similar formats are accepted too. Noise data is not supported.
 
-* Supported network parameters: S, Z
+* Supported network parameters: reflection coefficient (S), impedance (Z)
 * Supported parameters representations:
 real and imaginary; magnitude and angle; db and angle
 
