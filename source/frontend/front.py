@@ -130,7 +130,7 @@ def plot_smith(r, i, g, r_cut, i_cut, show_excluded):
 
 
 # plot (abs(S))(f) chart with pyplot
-def plot_abs_vs_f(f, r, i):
+def plot_abs_vs_f(f, r, i, fitted_mag_s):
     fig = plt.figure(figsize=(10, 10))
     abs_S = list((r[n] ** 2 + i[n] ** 2)**0.5 for n in range(len(r)))
     xlim = [min(f) - abs(max(f) - min(f)) * 0.1,
@@ -148,6 +148,8 @@ def plot_abs_vs_f(f, r, i):
               fontsize=24, fontname="Cambria")
 
     ax.plot(f, abs_S, '+', ms=8, mew=2, color='#1946BA')
+
+    ax.plot(f, fitted_mag_s, '-',ms=8, mew=8, color='#FF8400')
 
     # radius = abs(g[1] - g[0] / g[2]) / 2
     # x = ((g[1] + g[0] / g[2]) / 2).real
@@ -340,12 +342,13 @@ def run(calc_function):
                     i.pop()
                     f.pop()
 
-        if len(f) < 3 or len(f) != len(r) or len(f) != len(i):
-            return_status = 'Choosen data range is too small, add more points'
-        elif max(abs(np.array(r)+ 1j* np.array(i))) > 2:
-            return_status = 'Your data points have an abnormality:\
-                        they are too far outside the unit cirlce.\
-                        Make sure the format is correct'
+        if return_status == 'data parsed':
+            if len(f) < 3 or len(f) != len(r) or len(f) != len(i):
+                return_status = 'Choosen data range is too small, add more points'
+            elif max(abs(np.array(r)+ 1j* np.array(i))) > 2:
+                return_status = 'Your data points have an abnormality:\
+                            they are too far outside the unit cirlce.\
+                            Make sure the format is correct'
 
         return f, r, i, return_status
 
@@ -364,7 +367,7 @@ def run(calc_function):
 
     # file upload button
     uploaded_file = st.file_uploader('Upload a file from your vector analizer. \
-        Make sure the file format is .snp or it has a similar inner structure.'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       )
+        Make sure the file format is .snp or it has a similar inner structure.'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
 
     # check .snp
     data_format_snp = False
@@ -381,7 +384,7 @@ def run(calc_function):
             data =['# Hz S MA R 50\n\
                 11415403125 0.37010744 92.47802\n\
                 11416090625 0.33831283 92.906929\n\
-                11416778125 0.3069371 94.03318']
+                11416778125 0.3069371 94.03318'                                               ]
     else:
         data = uploaded_file.readlines()
         if uploaded_file.name[-4:-2]=='.s' and uploaded_file.name[-1]== 'p':
@@ -402,6 +405,7 @@ def run(calc_function):
 
             col1, col2 = st.columns([1,2])
 
+            ace_text_value = ''.join(data).strip()
             with col1.expander("Processing options"):
                 select_measurement_parameter = st.selectbox('Measurement parameter',
                                                           ['S', 'Z'],
@@ -456,7 +460,6 @@ def run(calc_function):
                     "type": "text"
                 })
 
-                ace_text_value = ''.join(data).strip()
                 st_ace(value=ace_text_value,
                        readonly=True,
                        auto_update=True,
@@ -475,19 +478,21 @@ def run(calc_function):
         input_ports_pair = 1
         if column_count > 3:
             pair_count = (column_count - 1) // 2
-            input_ports_pair_id = st.number_input(
+            input_ports_pair = st.number_input(
                 "Choosen pair of ports with network parameters:",
-                min_value = 1,
-                max_value = pair_count,
-                value = 1) - 1
-            ports_count = round(pair_count **0.5)
+                min_value=1,
+                max_value=pair_count,
+                value=1)
+            input_ports_pair_id = input_ports_pair - 1
+            ports_count = round(pair_count**0.5)
             st.write(select_measurement_parameter +
                      str(input_ports_pair_id // ports_count + 1) +
                      str(input_ports_pair_id % ports_count + 1))
-
-        f, r, i, validator_status = unpack_data(
-            data,(input_ports_pair - 1) * 2 + 1, column_count, input_ref_resistance,
-            ace_preview_markers)
+        f, r, i, validator_status = unpack_data(data,
+                                                (input_ports_pair - 1) * 2 + 1,
+                                                column_count,
+                                                input_ref_resistance,
+                                                ace_preview_markers)
         f = [x * hz for x in f]  # to hz
 
     st.write("Use range slider to choose best suitable data interval")
@@ -528,7 +533,7 @@ def run(calc_function):
             precision = col2.slider("Precision", min_value=0, max_value=7, value = 4)
             precision = '0.'+str(precision)+'f'
 
-        Q0, sigmaQ0, QL, sigmaQL, circle_params = calc_function(
+        Q0, sigmaQ0, QL, sigmaQL, circle_params, fl, fitted_mag_s = calc_function(
             f_cut, r_cut, i_cut, check_coupling_loss)
 
         if Q0 <= 0 or QL <= 0:
@@ -556,8 +561,8 @@ def run(calc_function):
                 f'{format(QL, precision)} \pm ' + f'{format(sigmaQL, precision)},  '
                 + r'\;\;\varepsilon_{Q_L} =' +
                  f'{format(sigmaQL / QL, precision)}')
-
+        st.latex(r'f_L ='+f'{fl}'+'Hz')
         with st.expander("Show static abs(S) plot"):
-            plot_abs_vs_f(f_cut, r_cut, i_cut)
+            plot_abs_vs_f(f_cut, r_cut, i_cut, fitted_mag_s)
 
         plot_smith(r, i, circle_params, r_cut, i_cut, st.checkbox("Show excluded points", value=True))
