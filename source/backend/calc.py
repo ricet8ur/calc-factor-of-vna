@@ -150,4 +150,7 @@ def fl_fitting(freq, re, im, correction):
         Q = Ql * (1 + qk)  # Q-factor = result
         # print(f"Q0 = {Q} +- {sigmaQ0}")
 
-    return Q, sigmaQ0, Ql, sigmaQl, a
+    t = 2*(np.array(freq)-fl)/fl
+    fitted_mag_s = abs((a[0]*t+a[1])/(a[2]*t+1))
+
+    return Q, sigmaQ0, Ql, sigmaQl, a, fl, fitted_mag_s
