@@ -12,6 +12,12 @@ def plot_interact_abs_from_f(f, r, i, interval_range):
     if interval_range is None:
         interval_range = (0, 100)
 
+    # fix the new file upload without echart interval refresh - dataZoom does not update it itself
+    if 'interval_range' not in st.session_state:
+        st.session_state.interval_range = (0,100)
+    
+    interval_range = st.session_state.interval_range
+
     abs_S = list(abs(np.array(r) + 1j * np.array(i)))
     # echarts for datazoom https://discuss.streamlit.io/t/streamlit-echarts/3655
     # datazoom https://echarts.apache.org/examples/en/editor.html?c=line-draggable&lang=ts
@@ -63,7 +69,7 @@ def plot_interact_abs_from_f(f, r, i, interval_range):
     }
     # DataZoom event is not fired on new file upload. There are no default event to fix it.
     events = {
-        "dataZoom": "function(params) { return ['dataZoom', params.start, params.end] }",
+        "dataZoom": "function(params) { console.log('a');return ['dataZoom', params.start, params.end] }",
         "restore": "function() { return ['restore'] }",
     }
 
@@ -73,12 +79,20 @@ def plot_interact_abs_from_f(f, r, i, interval_range):
         options=options, events=events, height="500px", key="render_basic_bar_events"
     )
 
-    if not get_event is None and get_event[0] == 'dataZoom':
-        interval_range = get_event[1:]
+    if not get_event is None:
+        if get_event[0] == 'dataZoom':
+            interval_range = get_event[1:]
+            st.session_state.interval_range = interval_range
+        else:
+            if interval_range != (0,100):
+                interval_range = (0, 100)
+                st.session_state.interval_range = interval_range
+                st.experimental_rerun()
+    print(st.session_state.interval_range, interval_range)
 
     n = len(f)
-    interval_start, interval_end = (
-        int(n*interval_range[id]*0.01) for id in (0, 1))
+    interval_start, interval_end = (int(n * interval_range[id] * 0.01)
+                                    for id in (0, 1))
     return interval_range, interval_start, interval_end
 
 
@@ -149,7 +163,7 @@ def plot_abs_vs_f(f, r, i, fitted_mag_s):
 
     ax.plot(f, abs_S, '+', ms=8, mew=2, color='#1946BA')
 
-    ax.plot(f, fitted_mag_s, '-',ms=8, mew=8, color='#FF8400')
+    ax.plot(f, fitted_mag_s, '-',linewidth=3, color='#FF8400')
 
     # radius = abs(g[1] - g[0] / g[2]) / 2
     # x = ((g[1] + g[0] / g[2]) / 2).real
@@ -184,15 +198,15 @@ def run(calc_function):
         nonlocal data_format_snp
         if data_format_snp:
             for x in range(len(data)):
-                if data[x][0] == '#':
+                if data[x].lstrip()[0] == '#':
                     line = data[x].split()
                     if len(line) == 6:
-                        repr_map = {"RI": 0, "MA": 1, "DB": 2}
-                        para_map = {"S": 0, "Z": 1}
-                        hz_map = {"GHz": 10**9, "MHz": 10 **6, "KHz": 10**3, "Hz": 1}
-                        hz, measurement_parameter, data_representation, _r, ref_resistance = line[1:]
+                        repr_map = {"ri": 0, "ma": 1, "db": 2}
+                        para_map = {"s": 0, "z": 1}
+                        hz_map = {"ghz": 10**9, "mhz": 10**6, "khz": 10**3, "hz": 1}
+                        hz, measurement_parameter, data_representation, _r, ref_resistance = (x.lower() for x in line[1:])
                         try:
-                            return hz_map[hz], para_map[measurement_parameter], repr_map[data_representation], int(ref_resistance)
+                            return hz_map[hz], para_map[measurement_parameter], repr_map[data_representation], int(float(ref_resistance))
                         except:
                             break
                     break
@@ -279,11 +293,11 @@ def run(calc_function):
                 break
 
             # mark as processed
-            for y in (a,b,c):
-                ace_preview_markers.append(
-                    {"startRow": x,"startCol": 0,
-                    "endRow": x,"endCol": data[x].find(y)+len(y),
-                    "className": "ace_stack","type": "text"})
+            # for y in (a,b,c):
+            #     ace_preview_markers.append(
+            #         {"startRow": x,"startCol": 0,
+            #         "endRow": x,"endCol": data[x].find(y)+len(y),
+            #         "className": "ace_stack","type": "text"})
 
             a, b, c = (float(x) for x in (a, b, c))
             f.append(a)  # frequency
@@ -381,10 +395,10 @@ def run(calc_function):
                 data = f.readlines()
         except:
             # 'streamlit run' call in the wrong directory. Display smaller demo:
-            data =['# Hz S MA R 50\n\
+            data = ['# Hz S MA R 50\n\
                 11415403125 0.37010744 92.47802\n\
                 11416090625 0.33831283 92.906929\n\
-                11416778125 0.3069371 94.03318'                                               ]
+                11416778125 0.3069371 94.03318']
     else:
         data = uploaded_file.readlines()
         if uploaded_file.name[-4:-2]=='.s' and uploaded_file.name[-1]== 'p':
@@ -418,6 +432,16 @@ def run(calc_function):
                 if select_measurement_parameter=='Z':
                     input_ref_resistance = st.number_input(
                         "Reference resistance:", min_value=0, value=input_ref_resistance)
+                if not data_format_snp:
+                    input_hz = st.selectbox(
+                        'Unit of frequency', [
+                            'Hz',
+                            'KHz',
+                            'MHz',
+                            'GHz'
+                        ], 0)
+                    hz_map = {"ghz": 10**9, "mhz": 10**6, "khz": 10**3, "hz": 1}
+                    hz = hz_map[input_hz.lower()]
                 input_start_line = int(st.number_input(
                     "First line for processing:", min_value=1, max_value=len(data)))
                 input_end_line = int(st.number_input(
