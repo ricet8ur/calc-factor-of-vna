@@ -14,8 +14,8 @@ def plot_interact_abs_from_f(f, r, i, interval_range):
 
     # fix the new file upload without echart interval refresh - dataZoom does not update it itself
     if 'interval_range' not in st.session_state:
-        st.session_state.interval_range = (0,100)
-    
+        st.session_state.interval_range = (0, 100)
+
     interval_range = st.session_state.interval_range
 
     abs_S = list(abs(np.array(r) + 1j * np.array(i)))
@@ -27,14 +27,22 @@ def plot_interact_abs_from_f(f, r, i, interval_range):
             "type": "category",
             "data": f,
             "name": "Hz",
-            "nameTextStyle": {"fontSize": 16},
-            "axisLabel": {"fontSize": 16},
+            "nameTextStyle": {
+                "fontSize": 16
+            },
+            "axisLabel": {
+                "fontSize": 16
+            },
         },
         "yAxis": {
             "type": "value",
             "name": "abs(S)",
-            "nameTextStyle": {"fontSize": 16},
-            "axisLabel": {"fontSize": 16},
+            "nameTextStyle": {
+                "fontSize": 16
+            },
+            "axisLabel": {
+                "fontSize": 16
+            },
             # "axisPointer": {
             #     "type": 'cross',
             #     "label": {
@@ -45,50 +53,65 @@ def plot_interact_abs_from_f(f, r, i, interval_range):
             #     }
             # }
         },
-        "series": [{"data": abs_S, "type": "line", "name": "abs(S)"}],
-        "height": 300,
-        "dataZoom": [{"type": "slider", "start": interval_range[0], "end": interval_range[1], "height": 100, "bottom": 10}],
+        "series": [{
+            "data": abs_S,
+            "type": "line",
+            "name": "abs(S)"
+        }],
+        "height":
+        300,
+        "dataZoom": [{
+            "type": "slider",
+            "start": interval_range[0],
+            "end": interval_range[1],
+            "height": 100,
+            "bottom": 10
+        }],
         "tooltip": {
-                "trigger": "axis",
-                "axisPointer": {
-                    "type": 'cross',
-                    # "label": {
-                    # "show":"true",
-                    # "formatter": JsCode(
-                    # "function(info){console.log(info);return 'line ' ;};"
-                    # ).js_code
-                    # }
-                }
+            "trigger": "axis",
+            "axisPointer": {
+                "type": 'cross',
+                # "label": {
+                # "show":"true",
+                # "formatter": JsCode(
+                # "function(info){console.log(info);return 'line ' ;};"
+                # ).js_code
+                # }
+            }
         },
         "toolbox": {
             "feature": {
                 # "dataView": { "show": "true", "readOnly": "true" },
-                "restore": {"show": "true"},
+                "restore": {
+                    "show": "true"
+                },
             }
         },
     }
     # DataZoom event is not fired on new file upload. There are no default event to fix it.
     events = {
-        "dataZoom": "function(params) { console.log('a');return ['dataZoom', params.start, params.end] }",
+        "dataZoom":
+        "function(params) { console.log('a');return ['dataZoom', params.start, params.end] }",
         "restore": "function() { return ['restore'] }",
     }
 
     # show echart with dataZoom and update intervals based on output
 
-    get_event = st_echarts(
-        options=options, events=events, height="500px", key="render_basic_bar_events"
-    )
+    get_event = st_echarts(options=options,
+                           events=events,
+                           height="500px",
+                           key="render_basic_bar_events")
 
     if not get_event is None:
         if get_event[0] == 'dataZoom':
             interval_range = get_event[1:]
             st.session_state.interval_range = interval_range
         else:
-            if interval_range != (0,100):
+            if interval_range != (0, 100):
                 interval_range = (0, 100)
                 st.session_state.interval_range = interval_range
                 st.experimental_rerun()
-    print(st.session_state.interval_range, interval_range)
+    # print(st.session_state.interval_range, interval_range)
 
     n = len(f)
     interval_start, interval_end = (int(n * interval_range[id] * 0.01)
@@ -96,15 +119,36 @@ def plot_interact_abs_from_f(f, r, i, interval_range):
     return interval_range, interval_start, interval_end
 
 
-
 def circle(ax, x, y, radius, color='#1946BA'):
     from matplotlib.patches import Ellipse
-    drawn_circle = Ellipse((x, y), radius * 2, radius * 2, clip_on=True,
-                           zorder=2, linewidth=2, edgecolor=color, facecolor=(0, 0, 0, .0125))
+    drawn_circle = Ellipse((x, y),
+                           radius * 2,
+                           radius * 2,
+                           clip_on=True,
+                           zorder=2,
+                           linewidth=2,
+                           edgecolor=color,
+                           facecolor=(0, 0, 0, .0125))
     ax.add_artist(drawn_circle)
 
 
-def plot_smith(r, i, g, r_cut, i_cut, show_excluded):
+def plot_smith(r, i, g, r_cut, i_cut):
+    show_excluded_points = True
+    show_Abs_S_scale = False
+    show_Re_Z_scale = False
+    show_Im_Z_scale = False
+    show_grid = True
+    with st.expander("Smith chart options"):
+        show_excluded_points = st.checkbox("Show excluded points",
+                                           value=show_excluded_points)
+        show_Abs_S_scale = st.checkbox("Show abs(S) lines",
+                                       value=show_Abs_S_scale)
+        show_Re_Z_scale = st.checkbox("Show Re(Z) lines",
+                                      value=show_Re_Z_scale)
+        show_Im_Z_scale = st.checkbox("Show Im(Z) lines",
+                                      value=show_Im_Z_scale)
+        show_grid = st.checkbox("Show grid", value=show_grid)
+
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
 
@@ -123,8 +167,31 @@ def plot_smith(r, i, g, r_cut, i_cut, show_excluded):
     # unit circle
     circle(ax, 0, 0, 1)
 
+    if not show_grid:
+        ax.axis('off')
+
+    background_img_x = -1.981
+    background_img_y = -1.949
+    background_img_box = [
+        background_img_x, 
+        background_img_x + 3.87, 
+        background_img_y,
+        background_img_y + 3.87
+    ]
+    if show_Abs_S_scale:
+        background = plt.imread("./source/frontend/images/s.png")
+        background = ax.imshow(background, extent=background_img_box)
+
+    if show_Re_Z_scale:
+        background = plt.imread("./source/frontend/images/re(z).png")
+        background = ax.imshow(background, extent=background_img_box)
+
+    if show_Im_Z_scale:
+        background = plt.imread("./source/frontend/images/im(z).png")
+        background = ax.imshow(background, extent=background_img_box)
+
     # input data points
-    if show_excluded:
+    if show_excluded_points:
         ax.plot(r, i, '+', ms=8, mew=2, color='#b6c7f4')
 
     # choosen data points
@@ -136,8 +203,8 @@ def plot_smith(r, i, g, r_cut, i_cut, show_excluded):
     y = ((g[1] + g[0] / g[2]) / 2).imag
     circle(ax, x, y, radius, color='#FF8400')
 
-    XLIM = [-1.1, 1.1]
-    YLIM = [-1.1, 1.1]
+    XLIM = [-1.3, 1.3]
+    YLIM = [-1.3, 1.3]
     ax.set_xlim(XLIM)
     ax.set_ylim(YLIM)
     st.pyplot(fig)
@@ -146,11 +213,15 @@ def plot_smith(r, i, g, r_cut, i_cut, show_excluded):
 # plot (abs(S))(f) chart with pyplot
 def plot_abs_vs_f(f, r, i, fitted_mag_s):
     fig = plt.figure(figsize=(10, 10))
-    abs_S = list((r[n] ** 2 + i[n] ** 2)**0.5 for n in range(len(r)))
-    xlim = [min(f) - abs(max(f) - min(f)) * 0.1,
-            max(f) + abs(max(f) - min(f)) * 0.1]
-    ylim = [min(abs_S) - abs(max(abs_S) - min(abs_S)) * 0.5,
-            max(abs_S) + abs(max(abs_S) - min(abs_S)) * 0.5]
+    abs_S = list((r[n]**2 + i[n]**2)**0.5 for n in range(len(r)))
+    xlim = [
+        min(f) - abs(max(f) - min(f)) * 0.1,
+        max(f) + abs(max(f) - min(f)) * 0.1
+    ]
+    ylim = [
+        min(abs_S) - abs(max(abs_S) - min(abs_S)) * 0.5,
+        max(abs_S) + abs(max(abs_S) - min(abs_S)) * 0.5
+    ]
     ax = fig.add_subplot()
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
@@ -158,12 +229,11 @@ def plot_abs_vs_f(f, r, i, fitted_mag_s):
     ax.grid(which='minor', color='grey', linestyle=':', linewidth=0.5)
     plt.xlabel(r'$f,\; 1/c$', color='gray', fontsize=16, fontname="Cambria")
     plt.ylabel('$|S|$', color='gray', fontsize=16, fontname="Cambria")
-    plt.title('Abs(S) vs frequency',
-              fontsize=24, fontname="Cambria")
+    plt.title('Abs(S) vs frequency', fontsize=24, fontname="Cambria")
 
     ax.plot(f, abs_S, '+', ms=8, mew=2, color='#1946BA')
 
-    ax.plot(f, fitted_mag_s, '-',linewidth=3, color='#FF8400')
+    ax.plot(f, fitted_mag_s, '-', linewidth=3, color='#FF8400')
 
     # radius = abs(g[1] - g[0] / g[2]) / 2
     # x = ((g[1] + g[0] / g[2]) / 2).real
@@ -203,10 +273,19 @@ def run(calc_function):
                     if len(line) == 6:
                         repr_map = {"ri": 0, "ma": 1, "db": 2}
                         para_map = {"s": 0, "z": 1}
-                        hz_map = {"ghz": 10**9, "mhz": 10**6, "khz": 10**3, "hz": 1}
-                        hz, measurement_parameter, data_representation, _r, ref_resistance = (x.lower() for x in line[1:])
+                        hz_map = {
+                            "ghz": 10**9,
+                            "mhz": 10**6,
+                            "khz": 10**3,
+                            "hz": 1
+                        }
+                        hz, measurement_parameter, data_representation, _r, ref_resistance = (
+                            x.lower() for x in line[1:])
                         try:
-                            return hz_map[hz], para_map[measurement_parameter], repr_map[data_representation], int(float(ref_resistance))
+                            return hz_map[hz], para_map[
+                                measurement_parameter], repr_map[
+                                    data_representation], int(
+                                        float(ref_resistance))
                         except:
                             break
                     break
@@ -216,7 +295,8 @@ def run(calc_function):
     # first is a comment line according to .snp documentation,
     # others detects comments in various languages
     def check_line_comments(line):
-        if len(line) < 2 or line[0] == '!' or line[0] == '#' or line[0] == '%' or line[0] == '/':
+        if len(line) < 2 or line[0] == '!' or line[0] == '#' or line[
+                0] == '%' or line[0] == '/':
             return None
         else:
             # generally we expect these chars as separators
@@ -257,11 +337,13 @@ def run(calc_function):
             elif number * 2 == len(splitted_line):
                 prepared_data[-1] += line
             else:
-                return_status = "Parsing error for .snp format on line №" + str(x)
+                return_status = "Parsing error for .snp format on line №" + str(
+                    x)
 
         return prepared_data, return_status
 
-    def unpack_data(data, first_column, column_count, ref_resistance, ace_preview_markers):
+    def unpack_data(data, first_column, column_count, ref_resistance,
+                    ace_preview_markers):
         nonlocal select_measurement_parameter
         nonlocal select_data_representation
         f, r, i = [], [], []
@@ -274,7 +356,8 @@ def run(calc_function):
             line = line.split()
 
             if column_count != len(line):
-                return_status = "Wrong number of parameters on line № " + str(x)
+                return_status = "Wrong number of parameters on line № " + str(
+                    x)
                 break
 
             # 1: process according to data_placement
@@ -282,7 +365,7 @@ def run(calc_function):
             try:
                 a = line[0]
                 b = line[first_column]
-                c = line[first_column+1]
+                c = line[first_column + 1]
             except:
                 return_status = 'Can\'t parse line №: ' + \
                     str(x) + ',\n not enough arguments'
@@ -308,12 +391,12 @@ def run(calc_function):
                 r.append(b)  # Re
                 i.append(c)  # Im
             elif select_data_representation == 'Frequency, magnitude, angle':
-                r.append(b*np.cos(np.deg2rad(c)))
-                i.append(b*np.sin(np.deg2rad(c)))
+                r.append(b * np.cos(np.deg2rad(c)))
+                i.append(b * np.sin(np.deg2rad(c)))
             elif select_data_representation == 'Frequency, db, angle':
-                b = 10**(b/20)
-                r.append(b*np.cos(np.deg2rad(c)))
-                i.append(b*np.sin(np.deg2rad(c)))
+                b = 10**(b / 20)
+                r.append(b * np.cos(np.deg2rad(c)))
+                i.append(b * np.sin(np.deg2rad(c)))
             else:
                 return_status = 'Wrong data format'
                 break
@@ -321,8 +404,8 @@ def run(calc_function):
             # 3: process according to measurement_parameter
             if select_measurement_parameter == 'Z':
                 # normalization
-                r[-1] = r[-1]/ref_resistance
-                i[-1] = i[-1]/ref_resistance
+                r[-1] = r[-1] / ref_resistance
+                i[-1] = i[-1] / ref_resistance
 
                 # translate to S
                 try:
@@ -330,25 +413,24 @@ def run(calc_function):
                     p1, r1 = r[-1] / (1 + r[-1]) + 0j, 1 / (1 + r[-1])  #real
                     p2, r2 = 1 + 1j * (1 / i[-1]), 1 / i[-1]  #imag
 
-                    d = abs(p2-p1)
+                    d = abs(p2 - p1)
                     q = (r1**2 - r2**2 + d**2) / (2 * d)
 
                     h = (r1**2 - q**2)**0.5
 
                     p = p1 + q * (p2 - p1) / d
 
-                    intersect = [
-                        (p.real + h * (p2.imag - p1.imag) / d,
-                        p.imag - h * (p2.real - p1.real) / d),
-                        (p.real - h * (p2.imag - p1.imag) / d,
-                         p.imag + h * (p2.real - p1.real) / d)]
+                    intersect = [(p.real + h * (p2.imag - p1.imag) / d,
+                                  p.imag - h * (p2.real - p1.real) / d),
+                                 (p.real - h * (p2.imag - p1.imag) / d,
+                                  p.imag + h * (p2.real - p1.real) / d)]
 
-                    intersect = [x+1j*y for x,y in intersect]
-                    intersect_shift = [p-(1+0j) for p in intersect]
+                    intersect = [x + 1j * y for x, y in intersect]
+                    intersect_shift = [p - (1 + 0j) for p in intersect]
                     intersect_shift = abs(np.array(intersect_shift))
-                    p=intersect[0]
-                    if intersect_shift[0]<intersect_shift[1]:
-                        p=intersect[1]
+                    p = intersect[0]
+                    if intersect_shift[0] < intersect_shift[1]:
+                        p = intersect[1]
                     r[-1] = p.real
                     i[-1] = p.imag
                 except:
@@ -359,7 +441,7 @@ def run(calc_function):
         if return_status == 'data parsed':
             if len(f) < 3 or len(f) != len(r) or len(f) != len(i):
                 return_status = 'Choosen data range is too small, add more points'
-            elif max(abs(np.array(r)+ 1j* np.array(i))) > 2:
+            elif max(abs(np.array(r) + 1j * np.array(i))) > 2:
                 return_status = 'Your data points have an abnormality:\
                             they are too far outside the unit cirlce.\
                             Make sure the format is correct'
@@ -380,8 +462,10 @@ def run(calc_function):
             st.write('Wrong start directory, see readme')
 
     # file upload button
-    uploaded_file = st.file_uploader('Upload a file from your vector analizer. \
-        Make sure the file format is .snp or it has a similar inner structure.'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
+    uploaded_file = st.file_uploader(
+        'Upload a file from your vector analizer. \
+        Make sure the file format is .snp or it has a similar inner structure.'
+    )
 
     # check .snp
     data_format_snp = False
@@ -395,13 +479,15 @@ def run(calc_function):
                 data = f.readlines()
         except:
             # 'streamlit run' call in the wrong directory. Display smaller demo:
-            data = ['# Hz S MA R 50\n\
+            data = [
+                '# Hz S MA R 50\n\
                 11415403125 0.37010744 92.47802\n\
                 11416090625 0.33831283 92.906929\n\
-                11416778125 0.3069371 94.03318']
+                11416778125 0.3069371 94.03318'
+            ]
     else:
         data = uploaded_file.readlines()
-        if uploaded_file.name[-4:-2]=='.s' and uploaded_file.name[-1]== 'p':
+        if uploaded_file.name[-4:-2] == '.s' and uploaded_file.name[-1] == 'p':
             data_format_snp = True
             data_format_snp_number = int(uploaded_file.name[-2])
 
@@ -415,39 +501,46 @@ def run(calc_function):
 
         validator_status = read_data(data)
         if validator_status == 'data read, but not parsed':
-            hz, select_measurement_parameter, select_data_representation, input_ref_resistance = parse_heading(data)
+            hz, select_measurement_parameter, select_data_representation, input_ref_resistance = parse_heading(
+                data)
 
-            col1, col2 = st.columns([1,2])
+            col1, col2 = st.columns([1, 2])
 
             ace_text_value = ''.join(data).strip()
             with col1.expander("Processing options"):
-                select_measurement_parameter = st.selectbox('Measurement parameter',
-                                                          ['S', 'Z'],
-                                                          select_measurement_parameter)
-                select_data_representation = st.selectbox('Data representation',
-                                                        ['Frequency, real, imaginary',
-                                                         'Frequency, magnitude, angle',
-                                                         'Frequency, db, angle'],
-                                                         select_data_representation)
-                if select_measurement_parameter=='Z':
+                select_measurement_parameter = st.selectbox(
+                    'Measurement parameter', ['S', 'Z'],
+                    select_measurement_parameter)
+                select_data_representation = st.selectbox(
+                    'Data representation', [
+                        'Frequency, real, imaginary',
+                        'Frequency, magnitude, angle', 'Frequency, db, angle'
+                    ], select_data_representation)
+                if select_measurement_parameter == 'Z':
                     input_ref_resistance = st.number_input(
-                        "Reference resistance:", min_value=0, value=input_ref_resistance)
+                        "Reference resistance:",
+                        min_value=0,
+                        value=input_ref_resistance)
                 if not data_format_snp:
-                    input_hz = st.selectbox(
-                        'Unit of frequency', [
-                            'Hz',
-                            'KHz',
-                            'MHz',
-                            'GHz'
-                        ], 0)
-                    hz_map = {"ghz": 10**9, "mhz": 10**6, "khz": 10**3, "hz": 1}
+                    input_hz = st.selectbox('Unit of frequency',
+                                            ['Hz', 'KHz', 'MHz', 'GHz'], 0)
+                    hz_map = {
+                        "ghz": 10**9,
+                        "mhz": 10**6,
+                        "khz": 10**3,
+                        "hz": 1
+                    }
                     hz = hz_map[input_hz.lower()]
-                input_start_line = int(st.number_input(
-                    "First line for processing:", min_value=1, max_value=len(data)))
-                input_end_line = int(st.number_input(
-                    "Last line for processing:", min_value=1, max_value=len(data), value=len(data)))
-                data = data[input_start_line-1:input_end_line]
-
+                input_start_line = int(
+                    st.number_input("First line for processing:",
+                                    min_value=1,
+                                    max_value=len(data)))
+                input_end_line = int(
+                    st.number_input("Last line for processing:",
+                                    min_value=1,
+                                    max_value=len(data),
+                                    value=len(data)))
+                data = data[input_start_line - 1:input_end_line]
 
             # Ace editor to show choosen data columns and rows
             with col2.expander("File preview"):
@@ -492,7 +585,8 @@ def run(calc_function):
                        height="300px")
 
             if data_format_snp and data_format_snp_number >= 3:
-                data, validator_status = prepare_snp(data, data_format_snp_number)
+                data, validator_status = prepare_snp(data,
+                                                     data_format_snp_number)
 
     if validator_status == "data read, but not parsed":
         column_count, validator_status = count_columns(data)
@@ -520,20 +614,22 @@ def run(calc_function):
         f = [x * hz for x in f]  # to hz
 
     st.write("Use range slider to choose best suitable data interval")
-    interval_range, interval_start, interval_end = plot_interact_abs_from_f(f, r, i, interval_range)
+    interval_range, interval_start, interval_end = plot_interact_abs_from_f(
+        f, r, i, interval_range)
 
     f_cut, r_cut, i_cut = [], [], []
     if validator_status == "data parsed":
         f_cut, r_cut, i_cut = (x[interval_start:interval_end]
-                           for x in (f, r, i))
+                               for x in (f, r, i))
 
         with st.expander("Selected data interval as .s1p"):
             st_ace(value="# Hz S RI R 50\n" +
-            ''.join(f'{f_cut[x]} {r_cut[x]} {i_cut[x]}\n' for x in range(len(f_cut))),
-                       readonly=True,
-                       auto_update=True,
-                       placeholder="Selection is empty",
-                       height="150px")
+                   ''.join(f'{f_cut[x]} {r_cut[x]} {i_cut[x]}\n'
+                           for x in range(len(f_cut))),
+                   readonly=True,
+                   auto_update=True,
+                   placeholder="Selection is empty",
+                   height="150px")
 
         if len(f_cut) < 3:
             validator_status = "Choosen interval is too small, add more points"
@@ -554,8 +650,11 @@ def run(calc_function):
         select_autoformat = col2.checkbox("Autoformat output", value=True)
         precision = None
         if not select_autoformat:
-            precision = col2.slider("Precision", min_value=0, max_value=7, value = 4)
-            precision = '0.'+str(precision)+'f'
+            precision = col2.slider("Precision",
+                                    min_value=0,
+                                    max_value=7,
+                                    value=4)
+            precision = '0.' + str(precision) + 'f'
 
         Q0, sigmaQ0, QL, sigmaQL, circle_params, fl, fitted_mag_s = calc_function(
             f_cut, r_cut, i_cut, check_coupling_loss)
@@ -566,27 +665,25 @@ def run(calc_function):
         if select_autoformat:
             st.latex(
                 r'Q_0 =' +
-                f'{sigfig.round(Q0, uncertainty=sigmaQ0, style="PDG")},  '
-                + r'\;\;\varepsilon_{Q_0} =' +
+                f'{sigfig.round(Q0, uncertainty=sigmaQ0, style="PDG")},  ' +
+                r'\;\;\varepsilon_{Q_0} =' +
                 f'{sigfig.round(sigmaQ0 / Q0, sigfigs=1, style="PDG")}')
             st.latex(
                 r'Q_L =' +
-                f'{sigfig.round(QL, uncertainty=sigmaQL, style="PDG")},  '
-                + r'\;\;\varepsilon_{Q_L} =' +
+                f'{sigfig.round(QL, uncertainty=sigmaQL, style="PDG")},  ' +
+                r'\;\;\varepsilon_{Q_L} =' +
                 f'{sigfig.round(sigmaQL / QL, sigfigs=1, style="PDG")}')
         else:
-            st.latex(
-                r'Q_0 =' +
-                f'{format(Q0, precision)} \pm ' + f'{format(sigmaQ0, precision)},  '
-                + r'\;\;\varepsilon_{Q_0} =' +
-                 f'{format(sigmaQ0 / Q0, precision)}')
-            st.latex(
-                r'Q_L =' +
-                f'{format(QL, precision)} \pm ' + f'{format(sigmaQL, precision)},  '
-                + r'\;\;\varepsilon_{Q_L} =' +
-                 f'{format(sigmaQL / QL, precision)}')
-        st.latex(r'f_L ='+f'{fl}'+'Hz')
+            st.latex(r'Q_0 =' + f'{format(Q0, precision)} \pm ' +
+                     f'{format(sigmaQ0, precision)},  ' +
+                     r'\;\;\varepsilon_{Q_0} =' +
+                     f'{format(sigmaQ0 / Q0, precision)}')
+            st.latex(r'Q_L =' + f'{format(QL, precision)} \pm ' +
+                     f'{format(sigmaQL, precision)},  ' +
+                     r'\;\;\varepsilon_{Q_L} =' +
+                     f'{format(sigmaQL / QL, precision)}')
+        st.latex(r'f_L =' + f'{fl}' + 'Hz')
         with st.expander("Show static abs(S) plot"):
             plot_abs_vs_f(f_cut, r_cut, i_cut, fitted_mag_s)
 
-        plot_smith(r, i, circle_params, r_cut, i_cut, st.checkbox("Show excluded points", value=True))
+        plot_smith(r, i, circle_params, r_cut, i_cut)
