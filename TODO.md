@@ -5,12 +5,12 @@
     * What is Q circle?
     * What data formats are supported?
 2. [x] Demo
-3. Support .snp
+3. [x]Support .snp
     * .s3p and more
 4. [x] Add button to copy choosen fragment to compare with other programs.
 5. [x] Advanced output options (only frontend):
     * Option to choose output values precision
-6. Add approximation for second chart (abs(S) from f)
+6. [x] Add approximation for second chart (abs(S) from f)
 7. [x] Add impedance input option (Z)
     * additional field for omega | from .snp
     * convertion to reflection coeffitient (explanation: <https://radioprog.ru/post/195>)
@@ -23,12 +23,10 @@
     * mp.dps = ~50 or something else.
     * make sure that result' ~ result
     * increase mp.dps while 7 digits after dot are not stable
+    * Don't do it, it is already taking ~3 seconds for 30000 input lines
 10. [x] Advanced file loading:
     * Show file preview
     * Options to skip first and last lines
-11. Advanced file preview: highlight choosen data fragments
+11. [x] Advanced file preview: highlight choosen data fragments
 12. [x] Make charts more interactive
-13. Make an option to pass the whole program to .html site via iframe? - It works, but where to host?
-14. Add support lines for smith chart?
 <!-- Add direct support for output files from different vna models? Supported formats: .snp, .csv or similar -->
-<!-- Do we need to calculate systematic errors? - yes, if its not too hard. After some considerations... Rather not -->

@@ -11,23 +11,34 @@ from .data_parsing_utils import parse_snp_header, read_data, count_columns, prep
 
 
 def plot_smith(r, i, g, r_cut, i_cut):
-    show_excluded_points = True
-    show_Abs_S_gridlines = False
-    show_Re_Z_gridlines = False
-    show_Im_Z_gridlines = False
-    show_grid = True
+    # maintaining state again (remember options for this session)
+    if 'smith_options' not in st.session_state:
+        st.session_state.smith_options = (True, True, False, False, False)
     with st.expander("Smith chart options"):
-        show_excluded_points = st.checkbox("Show excluded points",
-                                           value=show_excluded_points)
-        show_grid = st.checkbox("Show grid", value=show_grid)
 
-        show_Abs_S_gridlines = st.checkbox("Show |S| gridlines",
-                                       value=show_Abs_S_gridlines)
-        show_Re_Z_gridlines = st.checkbox("Show Re(Z) gridlines",
-                                      value=show_Re_Z_gridlines)
-        show_Im_Z_gridlines = st.checkbox("Show Im(Z) gridlines",
-                                      value=show_Im_Z_gridlines)
+        smith_options_input = (st.checkbox(
+            "Show excluded points",
+            value=st.session_state.smith_options[0]),
+                               st.checkbox("Show grid",
+                                           st.session_state.smith_options[1]),
+                               st.checkbox(
+                                   "Show |S| gridlines",
+                                   value=st.session_state.smith_options[2],
+                               ),
+                               st.checkbox(
+                                   "Show Re(Z) gridlines",
+                                   value=st.session_state.smith_options[3],
+                               ),
+                               st.checkbox(
+                                   "Show Im(Z) gridlines",
+                                   value=st.session_state.smith_options[4],
+                               ))
+        if st.session_state.smith_options != smith_options_input:
+            st.session_state.smith_options = smith_options_input
+            st.experimental_rerun()
 
+    (show_excluded_points, show_grid, show_Abs_S_gridlines,
+     show_Re_Z_gridlines, show_Im_Z_gridlines) = st.session_state.smith_options
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
     ax.axis('equal')
@@ -81,23 +92,18 @@ def plot_abs_vs_f(f, r, i, fitted_mag_s):
     fig = plt.figure(figsize=(10, 10))
     s = np.abs(np.array(r) + 1j * np.array(i))
     if st.session_state.legendselection == '|S| (dB)':
-        m = np.min(np.where(s==0, np.inf, s))
-        s = list(20*np.where(s==0, np.log10(m), np.log10(s)))
-        m = np.min(np.where(s==0, np.inf, fitted_mag_s))
-        fitted_mag_s = list(20*np.where(s==0, np.log10(m), np.log10(fitted_mag_s)))
+        m = np.min(np.where(s == 0, np.inf, s))
+        s = list(20 * np.where(s == 0, np.log10(m), np.log10(s)))
+        m = np.min(np.where(s == 0, np.inf, fitted_mag_s))
+        fitted_mag_s = list(
+            20 * np.where(s == 0, np.log10(m), np.log10(fitted_mag_s)))
     s = list(s)
     min_f = min(f)
     max_f = max(f)
-    xlim = [
-        min_f - abs(max_f - min_f) * 0.1,
-        max_f + abs(max_f - min_f) * 0.1
-    ]
+    xlim = [min_f - abs(max_f - min_f) * 0.1, max_f + abs(max_f - min_f) * 0.1]
     min_s = min(s)
     max_s = max(s)
-    ylim = [
-        min_s - abs(max_s - min_s) * 0.5,
-        max_s + abs(max_s - min_s) * 0.5
-    ]
+    ylim = [min_s - abs(max_s - min_s) * 0.5, max_s + abs(max_s - min_s) * 0.5]
     ax = fig.add_subplot()
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
@@ -366,4 +372,3 @@ def run(calc_function):
             plot_abs_vs_f(f_cut, r_cut, i_cut, fitted_mag_s)
 
         plot_smith(r, i, circle_params, r_cut, i_cut)
-
