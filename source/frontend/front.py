@@ -1,122 +1,12 @@
 import math
+from time import perf_counter
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import sigfig
 from streamlit_ace import st_ace
-from streamlit_echarts import st_echarts, JsCode
-
-
-# So that you can choose an interval of points on which we apply q-calc algorithm
-def plot_interact_abs_from_f(f, r, i, interval_range):
-    if interval_range is None:
-        interval_range = (0, 100)
-
-    # fix the new file upload without echart interval refresh - dataZoom does not update it itself
-    if 'interval_range' not in st.session_state:
-        st.session_state.interval_range = (0, 100)
-
-    interval_range = st.session_state.interval_range
-
-    abs_S = list(abs(np.array(r) + 1j * np.array(i)))
-    # echarts for datazoom https://discuss.streamlit.io/t/streamlit-echarts/3655
-    # datazoom https://echarts.apache.org/examples/en/editor.html?c=line-draggable&lang=ts
-    # axis pointer values https://echarts.apache.org/en/option.html#axisPointer
-    options = {
-        "xAxis": {
-            "type": "category",
-            "data": f,
-            "name": "Hz",
-            "nameTextStyle": {
-                "fontSize": 16
-            },
-            "axisLabel": {
-                "fontSize": 16
-            },
-        },
-        "yAxis": {
-            "type": "value",
-            "name": "abs(S)",
-            "nameTextStyle": {
-                "fontSize": 16
-            },
-            "axisLabel": {
-                "fontSize": 16
-            },
-            # "axisPointer": {
-            #     "type": 'cross',
-            #     "label": {
-            #     "show":"true",
-            #     "formatter": JsCode(
-            #     "function(info){console.log(info);return 'line ' ;};"
-            #     ).js_code
-            #     }
-            # }
-        },
-        "series": [{
-            "data": abs_S,
-            "type": "line",
-            "name": "abs(S)"
-        }],
-        "height":
-        300,
-        "dataZoom": [{
-            "type": "slider",
-            "start": interval_range[0],
-            "end": interval_range[1],
-            "height": 100,
-            "bottom": 10
-        }],
-        "tooltip": {
-            "trigger": "axis",
-            "axisPointer": {
-                "type": 'cross',
-                # "label": {
-                # "show":"true",
-                # "formatter": JsCode(
-                # "function(info){console.log(info);return 'line ' ;};"
-                # ).js_code
-                # }
-            }
-        },
-        "toolbox": {
-            "feature": {
-                # "dataView": { "show": "true", "readOnly": "true" },
-                "restore": {
-                    "show": "true"
-                },
-            }
-        },
-    }
-    # DataZoom event is not fired on new file upload. There are no default event to fix it.
-    events = {
-        "dataZoom":
-        "function(params) { console.log('a');return ['dataZoom', params.start, params.end] }",
-        "restore": "function() { return ['restore'] }",
-    }
-
-    # show echart with dataZoom and update intervals based on output
-
-    get_event = st_echarts(options=options,
-                           events=events,
-                           height="500px",
-                           key="render_basic_bar_events")
-
-    if not get_event is None:
-        if get_event[0] == 'dataZoom':
-            interval_range = get_event[1:]
-            st.session_state.interval_range = interval_range
-        else:
-            if interval_range != (0, 100):
-                interval_range = (0, 100)
-                st.session_state.interval_range = interval_range
-                st.experimental_rerun()
-    # print(st.session_state.interval_range, interval_range)
-
-    n = len(f)
-    interval_start, interval_end = (int(n * interval_range[id] * 0.01)
-                                    for id in (0, 1))
-    return interval_range, interval_start, interval_end
+from .show_echart import plot_interact_abs_from_f
+from .data_parsing_utils import is_float, read_data, check_line_comments, count_columns, prepare_snp
 
 
 def circle(ax, x, y, radius, color='#1946BA'):
@@ -128,11 +18,12 @@ def circle(ax, x, y, radius, color='#1946BA'):
                            zorder=2,
                            linewidth=2,
                            edgecolor=color,
-                           facecolor=(0, 0, 0, .0125))
+                           facecolor=(0, 0, 0, .0))
     ax.add_artist(drawn_circle)
 
 
 def plot_smith(r, i, g, r_cut, i_cut):
+    from matplotlib.image import AxesImage
     show_excluded_points = True
     show_Abs_S_scale = False
     show_Re_Z_scale = False
@@ -141,13 +32,14 @@ def plot_smith(r, i, g, r_cut, i_cut):
     with st.expander("Smith chart options"):
         show_excluded_points = st.checkbox("Show excluded points",
                                            value=show_excluded_points)
-        show_Abs_S_scale = st.checkbox("Show abs(S) lines",
-                                       value=show_Abs_S_scale)
-        show_Re_Z_scale = st.checkbox("Show Re(Z) lines",
-                                      value=show_Re_Z_scale)
-        show_Im_Z_scale = st.checkbox("Show Im(Z) lines",
-                                      value=show_Im_Z_scale)
         show_grid = st.checkbox("Show grid", value=show_grid)
+        
+        show_Abs_S_scale = st.checkbox("Show |S| gridlines",
+                                       value=show_Abs_S_scale)
+        show_Re_Z_scale = st.checkbox("Show Re(Z) gridlines",
+                                      value=show_Re_Z_scale)
+        show_Im_Z_scale = st.checkbox("Show Im(Z) gridlines",
+                                      value=show_Im_Z_scale)
 
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
@@ -160,8 +52,8 @@ def plot_smith(r, i, g, r_cut, i_cut):
     ax.set_yticks(minor_ticks, minor=True)
     ax.grid(which='major', color='grey', linewidth=1.5)
     ax.grid(which='minor', color='grey', linewidth=0.5, linestyle=':')
-    plt.xlabel('$Re(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
-    plt.ylabel('$Im(\Gamma)$', color='gray', fontsize=16, fontname="Cambria")
+    plt.xlabel('$Re(S)$', color='gray', fontsize=16, fontname="Cambria")
+    plt.ylabel('$Im(S)$', color='gray', fontsize=16, fontname="Cambria")
     plt.title('Smith chart', fontsize=24, fontname="Cambria")
 
     # unit circle
@@ -173,22 +65,25 @@ def plot_smith(r, i, g, r_cut, i_cut):
     background_img_x = -1.981
     background_img_y = -1.949
     background_img_box = [
-        background_img_x, 
-        background_img_x + 3.87, 
+        background_img_x,
+        background_img_x + 3.87,
         background_img_y,
         background_img_y + 3.87
     ]
     if show_Abs_S_scale:
+        # imshow is extremely slow
+        # TODO draw primitives in place
         background = plt.imread("./source/frontend/images/s.png")
-        background = ax.imshow(background, extent=background_img_box)
+        background = ax.imshow(background, extent=background_img_box, interpolation= 'none')
+
 
     if show_Re_Z_scale:
         background = plt.imread("./source/frontend/images/re(z).png")
-        background = ax.imshow(background, extent=background_img_box)
+        background = ax.imshow(background, extent=background_img_box, interpolation= 'none')
 
     if show_Im_Z_scale:
         background = plt.imread("./source/frontend/images/im(z).png")
-        background = ax.imshow(background, extent=background_img_box)
+        background = ax.imshow(background, extent=background_img_box, interpolation= 'none')
 
     # input data points
     if show_excluded_points:
@@ -210,17 +105,28 @@ def plot_smith(r, i, g, r_cut, i_cut):
     st.pyplot(fig)
 
 
-# plot (abs(S))(f) chart with pyplot
+# plot abs(S) vs f chart with pyplot
 def plot_abs_vs_f(f, r, i, fitted_mag_s):
     fig = plt.figure(figsize=(10, 10))
-    abs_S = list((r[n]**2 + i[n]**2)**0.5 for n in range(len(r)))
+    s = np.abs(np.array(r) + 1j * np.array(i))
+    if st.session_state.legendselection == '|S| (dB)':
+        m = np.min(np.where(s==0, np.inf, s))
+        s = list(20*np.where(s==0, np.log10(m), np.log10(s)))
+        m = np.min(np.where(s==0, np.inf, fitted_mag_s))
+        fitted_mag_s = list(20*np.where(s==0, np.log10(m), np.log10(fitted_mag_s)))
+    s = list(s)
+    min_f = min(f)
+    max_f = max(f)
     xlim = [
-        min(f) - abs(max(f) - min(f)) * 0.1,
-        max(f) + abs(max(f) - min(f)) * 0.1
+        min_f - abs(max_f - min_f) * 0.1,
+        max_f + abs(max_f - min_f) * 0.1
     ]
+    min_s = min(s)
+    max_s = max(s)
+    print(min_s,max_s)
     ylim = [
-        min(abs_S) - abs(max(abs_S) - min(abs_S)) * 0.5,
-        max(abs_S) + abs(max(abs_S) - min(abs_S)) * 0.5
+        min_s - abs(max_s - min_s) * 0.5,
+        max_s + abs(max_s - min_s) * 0.5
     ]
     ax = fig.add_subplot()
     ax.set_xlim(xlim)
@@ -228,41 +134,21 @@ def plot_abs_vs_f(f, r, i, fitted_mag_s):
     ax.grid(which='major', color='k', linewidth=1)
     ax.grid(which='minor', color='grey', linestyle=':', linewidth=0.5)
     plt.xlabel(r'$f,\; 1/c$', color='gray', fontsize=16, fontname="Cambria")
-    plt.ylabel('$|S|$', color='gray', fontsize=16, fontname="Cambria")
-    plt.title('Abs(S) vs frequency', fontsize=24, fontname="Cambria")
+    if st.session_state.legendselection == '|S| (dB)':
+        plt.ylabel('$|S|$ (dB)', color='gray', fontsize=16, fontname="Cambria")
+        plt.title('|S| (dB) vs frequency', fontsize=24, fontname="Cambria")
+    else:
+        plt.ylabel('$|S|$', color='gray', fontsize=16, fontname="Cambria")
+        plt.title('|S| vs frequency', fontsize=24, fontname="Cambria")
 
-    ax.plot(f, abs_S, '+', ms=8, mew=2, color='#1946BA')
+    ax.plot(f, s, '+', ms=8, mew=2, color='#1946BA')
 
     ax.plot(f, fitted_mag_s, '-', linewidth=3, color='#FF8400')
 
-    # radius = abs(g[1] - g[0] / g[2]) / 2
-    # x = ((g[1] + g[0] / g[2]) / 2).real
-    # y = ((g[1] + g[0] / g[2]) / 2).imag
     st.pyplot(fig)
 
 
 def run(calc_function):
-
-    def is_float(element) -> bool:
-        try:
-            float(element)
-            val = float(element)
-            if math.isnan(val) or math.isinf(val):
-                raise ValueError
-            return True
-        except ValueError:
-            return False
-
-    # to utf-8
-    def read_data(data):
-        for x in range(len(data)):
-            if type(data[x]) == bytes:
-                try:
-                    data[x] = data[x].decode('utf-8-sig', 'ignore')
-                except:
-                    return 'Not an utf-8-sig line №: ' + str(x)
-        return 'data read, but not parsed'
-
     # for Touchstone .snp format
     def parse_heading(data):
         nonlocal data_format_snp
@@ -290,57 +176,6 @@ def run(calc_function):
                             break
                     break
         return 1, 0, 0, 50
-
-    # check if line has comments
-    # first is a comment line according to .snp documentation,
-    # others detects comments in various languages
-    def check_line_comments(line):
-        if len(line) < 2 or line[0] == '!' or line[0] == '#' or line[
-                0] == '%' or line[0] == '/':
-            return None
-        else:
-            # generally we expect these chars as separators
-            line = line.replace(';', ' ').replace(',', ' ')
-            if '!' in line:
-                line = line[:line.find('!')]
-            return line
-
-    # unpack a few first lines of the file to get number of ports
-    def count_columns(data):
-        return_status = 'data parsed'
-        column_count = 0
-        for x in range(len(data)):
-            line = check_line_comments(data[x])
-            if line is None:
-                continue
-            line = line.split()
-            # always at least 3 values for single data point
-            if len(line) < 3:
-                return_status = 'Can\'t parse line № ' + \
-                    str(x) + ',\n not enough arguments (less than 3)'
-                break
-            column_count = len(line)
-            break
-        return column_count, return_status
-
-    def prepare_snp(data, number):
-        prepared_data = []
-        return_status = 'data read, but not parsed'
-        for x in range(len(data)):
-            line = check_line_comments(data[x])
-            if line is None:
-                continue
-
-            splitted_line = line.split()
-            if number * 2 + 1 == len(splitted_line):
-                prepared_data.append(line)
-            elif number * 2 == len(splitted_line):
-                prepared_data[-1] += line
-            else:
-                return_status = "Parsing error for .snp format on line №" + str(
-                    x)
-
-        return prepared_data, return_status
 
     def unpack_data(data, first_column, column_count, ref_resistance,
                     ace_preview_markers):
@@ -448,9 +283,6 @@ def run(calc_function):
 
         return f, r, i, return_status
 
-    # make accessible a specific range of numerical data choosen with interactive plot
-    # percent, line id, line id
-    interval_range, interval_start, interval_end = None, None, None
 
     # info
     with st.expander("Info"):
@@ -544,8 +376,6 @@ def run(calc_function):
 
             # Ace editor to show choosen data columns and rows
             with col2.expander("File preview"):
-                # st.button(copy selection)
-
                 # So little 'official' functionality in libs and lack of documentation
                 # therefore beware: css hacks
 
@@ -562,12 +392,14 @@ def run(calc_function):
                 # color: rgb(49, 51, 63);
                 # }</style>''', unsafe_allow_html=True)
 
-                # markdown injection does not seems to work, since ace is in a different .html accessible via iframe
+                # markdown injection does not seems to work, 
+                # since ace is in a different .html accessible via iframe
 
                 # markers format:
                 #[{"startRow": 2,"startCol": 0,"endRow": 2,"endCol": 3,"className": "ace_error-marker","type": "text"}]
 
-                # add marking for choosen data lines TODO
+                # add marking for choosen data lines?
+                # todo or not todo?
                 ace_preview_markers.append({
                     "startRow": input_start_line - 1,
                     "startCol": 0,
@@ -597,13 +429,13 @@ def run(calc_function):
         if column_count > 3:
             pair_count = (column_count - 1) // 2
             input_ports_pair = st.number_input(
-                "Choosen pair of ports with network parameters:",
+                "Choose pair of ports with network parameters:",
                 min_value=1,
                 max_value=pair_count,
                 value=1)
             input_ports_pair_id = input_ports_pair - 1
             ports_count = round(pair_count**0.5)
-            st.write(select_measurement_parameter +
+            st.write('Choosen ports: ' + select_measurement_parameter +
                      str(input_ports_pair_id // ports_count + 1) +
                      str(input_ports_pair_id % ports_count + 1))
         f, r, i, validator_status = unpack_data(data,
@@ -614,8 +446,12 @@ def run(calc_function):
         f = [x * hz for x in f]  # to hz
 
     st.write("Use range slider to choose best suitable data interval")
-    interval_range, interval_start, interval_end = plot_interact_abs_from_f(
-        f, r, i, interval_range)
+
+    # make accessible a specific range of numerical data choosen with interactive plot
+    # line id, line id
+    interval_start, interval_end = plot_interact_abs_from_f(f,r,i)
+
+    # plot_interact_abs_from_f( f, r, i, interval_range)
 
     f_cut, r_cut, i_cut = [], [], []
     if validator_status == "data parsed":
@@ -640,7 +476,7 @@ def run(calc_function):
         col1, col2 = st.columns(2)
 
         check_coupling_loss = col1.checkbox(
-            'Apply correction for coupling loss')
+            'Apply correction for coupling losses')
 
         if check_coupling_loss:
             col1.write("Option: Lossy coupling")
@@ -648,7 +484,7 @@ def run(calc_function):
             col1.write("Option: Cable attenuation")
 
         select_autoformat = col2.checkbox("Autoformat output", value=True)
-        precision = None
+        precision = '0.0f'
         if not select_autoformat:
             precision = col2.slider("Precision",
                                     min_value=0,
@@ -656,34 +492,45 @@ def run(calc_function):
                                     value=4)
             precision = '0.' + str(precision) + 'f'
 
-        Q0, sigmaQ0, QL, sigmaQL, circle_params, fl, fitted_mag_s = calc_function(
+        Q0, sigmaQ0, QL, sigmaQL, k, ks, circle_params, fl, fitted_mag_s = calc_function(
             f_cut, r_cut, i_cut, check_coupling_loss)
 
         if Q0 <= 0 or QL <= 0:
             st.write("Negative Q detected, fitting may be inaccurate!")
 
-        if select_autoformat:
-            st.latex(
-                r'Q_0 =' +
-                f'{sigfig.round(Q0, uncertainty=sigmaQ0, style="PDG")},  ' +
-                r'\;\;\varepsilon_{Q_0} =' +
-                f'{sigfig.round(sigmaQ0 / Q0, sigfigs=1, style="PDG")}')
-            st.latex(
-                r'Q_L =' +
-                f'{sigfig.round(QL, uncertainty=sigmaQL, style="PDG")},  ' +
-                r'\;\;\varepsilon_{Q_L} =' +
-                f'{sigfig.round(sigmaQL / QL, sigfigs=1, style="PDG")}')
-        else:
-            st.latex(r'Q_0 =' + f'{format(Q0, precision)} \pm ' +
-                     f'{format(sigmaQ0, precision)},  ' +
-                     r'\;\;\varepsilon_{Q_0} =' +
-                     f'{format(sigmaQ0 / Q0, precision)}')
-            st.latex(r'Q_L =' + f'{format(QL, precision)} \pm ' +
-                     f'{format(sigmaQL, precision)},  ' +
-                     r'\;\;\varepsilon_{Q_L} =' +
-                     f'{format(sigmaQL / QL, precision)}')
-        st.latex(r'f_L =' + f'{fl}' + 'Hz')
+        def show_result_in_latex(name, value, uncertainty=None):
+            nonlocal select_autoformat
+            if uncertainty is not None:
+                if select_autoformat:
+                    st.latex(
+                        name + ' =' +
+                        f'{sigfig.round(value, uncertainty=uncertainty, style="PDG")},  '
+                        + r'\;\;\varepsilon_{' + name + '} =' +
+                        f'{sigfig.round(uncertainty / value, sigfigs=1, style="PDG")}'
+                    )
+                else:
+                    st.latex(name + ' =' + f'{format(value, precision)} \pm ' +
+                             f'{format(uncertainty, precision)},  ' +
+                             r'\;\;\varepsilon_{' + name + '} =' +
+                             f'{format(uncertainty / value, precision)}')
+            else:
+                if select_autoformat:
+                    st.latex(name + ' =' +
+                             f'{sigfig.round(value, sigfigs=5, style="PDG")}')
+                else:
+                    st.latex(name + ' =' + f'{format(value, precision)}')
+
+        show_result_in_latex('Q_0', Q0, sigmaQ0)
+        show_result_in_latex('Q_L', QL, sigmaQL)
+        show_result_in_latex(r'\kappa', k)
+        if check_coupling_loss:
+            show_result_in_latex(r'\kappa_s', ks)
+
+        st.latex('f_L =' + f'{format(fl, precision)}' + r'\text{ }Hz')
+
         with st.expander("Show static abs(S) plot"):
             plot_abs_vs_f(f_cut, r_cut, i_cut, fitted_mag_s)
 
+        t1= perf_counter()
         plot_smith(r, i, circle_params, r_cut, i_cut)
+        print(perf_counter()-t1)
