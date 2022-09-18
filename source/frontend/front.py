@@ -84,7 +84,10 @@ def plot_smith(r, i, g, r_cut, i_cut):
     YLIM = [-1.3, 1.3]
     ax.set_xlim(XLIM)
     ax.set_ylim(YLIM)
-    st.pyplot(fig)
+    try:
+        st.pyplot(fig)
+    except:
+        st.write('Unexpected plot error')
 
 
 # plot abs(S) vs f chart with pyplot
@@ -121,12 +124,12 @@ def plot_abs_vs_f(f, r, i, fitted_mag_s):
 
     ax.plot(f, fitted_mag_s, '-', linewidth=3, color='#FF8400')
 
-    st.pyplot(fig)
-
+    try:
+        st.pyplot(fig)
+    except:
+        st.write('Unexpected plot error')
 
 def run(calc_function):
-
-
     # info
     with st.expander("Info"):
         # streamlit.markdown does not support footnotes
@@ -214,6 +217,8 @@ def run(calc_function):
                                     min_value=1,
                                     max_value=len(data),
                                     value=len(data)))
+                if input_end_line < input_start_line:
+                    input_end_line=input_start_line
                 data = data[input_start_line - 1:input_end_line]
 
             # Ace editor to show choosen data columns and rows
@@ -290,25 +295,28 @@ def run(calc_function):
 
     st.write("Use range slider to choose best suitable data interval")
 
-    # make accessible a specific range of numerical data choosen with interactive plot
-    # line id, line id
-    interval_start, interval_end = plot_interact_abs_from_f(f,r,i)
-
-    f_cut, r_cut, i_cut = [], [], []
-    if validator_status == "data parsed":
-        f_cut, r_cut, i_cut = (x[interval_start:interval_end]
-                               for x in (f, r, i))
-        with st.expander("Selected data interval as .s1p"):
-            st_ace(value="# Hz S RI R 50\n" +
-                   ''.join(f'{f_cut[x]} {r_cut[x]} {i_cut[x]}\n'
-                           for x in range(len(f_cut))),
-                   readonly=True,
-                   auto_update=True,
-                   placeholder="Selection is empty",
-                   height="150px")
-
-        if len(f_cut) < 3:
-            validator_status = "Choosen interval is too small, add more points"
+    if len(f)==0:
+        validator_status = 'data unpacking error: empty data'
+    else:
+        # make accessible a specific range of numerical data choosen with interactive plot
+        # line id, line id
+        interval_start, interval_end = plot_interact_abs_from_f(f,r,i)
+    
+        f_cut, r_cut, i_cut = [], [], []
+        if validator_status == "data parsed":
+            f_cut, r_cut, i_cut = (x[interval_start:interval_end]
+                                   for x in (f, r, i))
+            with st.expander("Selected data interval as .s1p"):
+                st_ace(value="# Hz S RI R 50\n" +
+                       ''.join(f'{f_cut[x]} {r_cut[x]} {i_cut[x]}\n'
+                               for x in range(len(f_cut))),
+                       readonly=True,
+                       auto_update=True,
+                       placeholder="Selection is empty",
+                       height="150px")
+    
+            if len(f_cut) < 3:
+                validator_status = "Choosen interval is too small, add more points"
 
     st.write("Status: " + validator_status)
 
