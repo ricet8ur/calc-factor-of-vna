@@ -135,7 +135,6 @@ def plot_interact_abs_from_f(f, r, i):
 
         elif e[0] == "legendselectchanged":
             if e[1] != st.session_state.legendselection:
-                print('c')
                 # Save selected type of series to state
                 st.session_state.legendselection = e[1]
                 # make chart state the same as actual state
