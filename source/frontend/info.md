@@ -42,3 +42,6 @@ Correction for coupling loss is implemented according to [3].
 
 * http://scikit-rf.org/
 * https://people.engineering.olemiss.edu/darko-kajfez/software/
+
+##### Terms of use
+This program comes with ABSOLUTELY NO WARRANTY
