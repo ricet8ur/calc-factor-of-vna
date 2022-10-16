@@ -16,9 +16,8 @@ def plot_interact_abs_from_f(f, r, i):
     s = np.abs(np.array(r) + 1j * np.array(i))
     abs_S = list(s)
     # case (s[x] = 0) => (log10(s[x]) = log10(min(s)))
-    m = np.min(np.where(s == 0, np.inf, s))
+    m = np.max(np.where(s == 0, 10**-50, s)) # where 10**-50 ~ 0
     db_abs_S = list(20 * np.where(s == 0, np.log10(m), np.log10(s)))
-
     # echarts for datazoom https://discuss.streamlit.io/t/streamlit-echarts/3655
     # datazoom https://echarts.apache.org/examples/en/editor.html?c=line-draggable&lang=ts
     # axis pointer values https://echarts.apache.org/en/option.html#axisPointer
