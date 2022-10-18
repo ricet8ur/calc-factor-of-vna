@@ -9,6 +9,10 @@ from .draw_smith_utils import draw_smith_circle, plot_abs_s_gridlines, plot_im_z
 from .show_amplitude_echart import plot_interact_abs_from_f
 from .data_parsing_utils import parse_snp_header, read_data, count_columns, prepare_snp, unpack_data
 
+# see https://docs.streamlit.io/streamlit-cloud/troubleshooting#limitations-and-known-issues
+# if you're using Matplotlib you should wrap your code with locks
+from matplotlib.backends.backend_agg import RendererAgg
+
 
 def plot_smith(r, i, g, r_cut, i_cut):
     # maintaining state again (remember options for this session)
@@ -39,95 +43,109 @@ def plot_smith(r, i, g, r_cut, i_cut):
 
     (show_excluded_points, show_grid, show_Abs_S_gridlines,
      show_Re_Z_gridlines, show_Im_Z_gridlines) = st.session_state.smith_options
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot()
-    ax.axis('equal')
-    minor_ticks = np.arange(-1.1, 1.1, 0.05)
-    ax.set_xticks(minor_ticks, minor=True)
-    ax.set_yticks(minor_ticks, minor=True)
-    ax.grid(which='major', color='grey', linewidth=1.5)
-    ax.grid(which='minor', color='grey', linewidth=0.5, linestyle=':')
-    plt.xlabel('$Re(S)$', color='gray', fontsize=16, fontname="Cambria")
-    plt.ylabel('$Im(S)$', color='gray', fontsize=16, fontname="Cambria")
-    plt.title('Smith chart', fontsize=24, fontname="Cambria")
 
-    # unit circle
-    draw_smith_circle(ax, 0, 0, 1, '#1946BA')
+    # _lock to fix matplotlib crashing maybe?
+    _lock = RendererAgg.lock
+    with _lock:
+        # normal matplotlib usage
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot()
+        ax.axis('equal')
+        minor_ticks = np.arange(-1.1, 1.1, 0.05)
+        ax.set_xticks(minor_ticks, minor=True)
+        ax.set_yticks(minor_ticks, minor=True)
+        ax.grid(which='major', color='grey', linewidth=1.5)
+        ax.grid(which='minor', color='grey', linewidth=0.5, linestyle=':')
+        plt.xlabel('$Re(S)$', color='gray', fontsize=16, fontname="Cambria")
+        plt.ylabel('$Im(S)$', color='gray', fontsize=16, fontname="Cambria")
+        plt.title('Smith chart', fontsize=24, fontname="Cambria")
 
-    if not show_grid:
-        ax.axis('off')
+        # unit circle
+        draw_smith_circle(ax, 0, 0, 1, '#1946BA')
 
-    if show_Abs_S_gridlines:
-        # imshow is extremely slow, so draw it in place
-        plot_abs_s_gridlines(ax)
+        if not show_grid:
+            ax.axis('off')
 
-    if show_Re_Z_gridlines:
-        plot_re_z_gridlines(ax)
+        if show_Abs_S_gridlines:
+            # imshow is extremely slow, so draw it in place
+            plot_abs_s_gridlines(ax)
 
-    if show_Im_Z_gridlines:
-        plot_im_z_gridlines(ax)
+        if show_Re_Z_gridlines:
+            plot_re_z_gridlines(ax)
 
-    # input data points
-    if show_excluded_points:
-        ax.plot(r, i, '+', ms=8, mew=2, color='#b6c7f4')
+        if show_Im_Z_gridlines:
+            plot_im_z_gridlines(ax)
 
-    # choosen data points
-    ax.plot(r_cut, i_cut, '+', ms=8, mew=2, color='#1946BA')
+        # input data points
+        if show_excluded_points:
+            ax.plot(r, i, '+', ms=8, mew=2, color='#b6c7f4')
 
-    # S-circle approximation by calc
-    radius = abs(g[1] - g[0] / g[2]) / 2
-    x = ((g[1] + g[0] / g[2]) / 2).real
-    y = ((g[1] + g[0] / g[2]) / 2).imag
-    draw_smith_circle(ax, x, y, radius, color='#FF8400')
+        # choosen data points
+        ax.plot(r_cut, i_cut, '+', ms=8, mew=2, color='#1946BA')
 
-    XLIM = [-1.3, 1.3]
-    YLIM = [-1.3, 1.3]
-    ax.set_xlim(XLIM)
-    ax.set_ylim(YLIM)
-    try:
-        st.pyplot(fig)
-    except:
-        st.write('Unexpected plot error')
+        # S-circle approximation by calc
+        radius = abs(g[1] - g[0] / g[2]) / 2
+        x = ((g[1] + g[0] / g[2]) / 2).real
+        y = ((g[1] + g[0] / g[2]) / 2).imag
+        draw_smith_circle(ax, x, y, radius, color='#FF8400')
+
+        XLIM = [-1.3, 1.3]
+        YLIM = [-1.3, 1.3]
+        ax.set_xlim(XLIM)
+        ax.set_ylim(YLIM)
+        try:
+            st.pyplot(fig)
+        except:
+            st.write('Unexpected plot error')
+            reload_plot=st.button('Reload')
+            if reload_plot:
+                st.experimental_rerun()
 
 
 # plot abs(S) vs f chart with pyplot
 def plot_abs_vs_f(f, r, i, fitted_mag_s):
-    fig = plt.figure(figsize=(10, 10))
-    s = np.abs(np.array(r) + 1j * np.array(i))
-    if st.session_state.legendselection == '|S| (dB)':
-        m = np.min(np.where(s == 0, np.inf, s))
-        s = list(20 * np.where(s == 0, np.log10(m), np.log10(s)))
-        m = np.min(np.where(s == 0, np.inf, fitted_mag_s))
-        fitted_mag_s = list(
-            20 * np.where(s == 0, np.log10(m), np.log10(fitted_mag_s)))
-    s = list(s)
-    min_f = min(f)
-    max_f = max(f)
-    xlim = [min_f - abs(max_f - min_f) * 0.1, max_f + abs(max_f - min_f) * 0.1]
-    min_s = min(s)
-    max_s = max(s)
-    ylim = [min_s - abs(max_s - min_s) * 0.5, max_s + abs(max_s - min_s) * 0.5]
-    ax = fig.add_subplot()
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
-    ax.grid(which='major', color='k', linewidth=1)
-    ax.grid(which='minor', color='grey', linestyle=':', linewidth=0.5)
-    plt.xlabel(r'$f,\; 1/c$', color='gray', fontsize=16, fontname="Cambria")
-    if st.session_state.legendselection == '|S| (dB)':
-        plt.ylabel('$|S|$ (dB)', color='gray', fontsize=16, fontname="Cambria")
-        plt.title('|S| (dB) vs frequency', fontsize=24, fontname="Cambria")
-    else:
-        plt.ylabel('$|S|$', color='gray', fontsize=16, fontname="Cambria")
-        plt.title('|S| vs frequency', fontsize=24, fontname="Cambria")
+    # _lock to fix matplotlib crashing maybe?
+    _lock = RendererAgg.lock
+    with _lock:
+        fig = plt.figure(figsize=(10, 10))
+        s = np.abs(np.array(r) + 1j * np.array(i))
+        if st.session_state.legendselection == '|S| (dB)':
+            m = np.max(np.where(s == 0, 10**-50, s)) # where 10**-50 ~ 0
+            s = list(20 * np.where(s == 0, np.log10(m), np.log10(s)))
+            m = np.max(np.where(s == 0, 10**-50, fitted_mag_s)) # where 10**-50 ~ 0
+            fitted_mag_s = list(
+                20 * np.where(s == 0, np.log10(m), np.log10(fitted_mag_s)))
+        s = list(s)
+        min_f = min(f)
+        max_f = max(f)
+        xlim = [min_f - abs(max_f - min_f) * 0.1, max_f + abs(max_f - min_f) * 0.1]
+        min_s = min(s)
+        max_s = max(s)
+        ylim = [min_s - abs(max_s - min_s) * 0.5, max_s + abs(max_s - min_s) * 0.5]
+        ax = fig.add_subplot()
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        ax.grid(which='major', color='k', linewidth=1)
+        ax.grid(which='minor', color='grey', linestyle=':', linewidth=0.5)
+        plt.xlabel(r'$f,\; 1/c$', color='gray', fontsize=16, fontname="Cambria")
+        if st.session_state.legendselection == '|S| (dB)':
+            plt.ylabel('$|S|$ (dB)', color='gray', fontsize=16, fontname="Cambria")
+            plt.title('|S| (dB) vs frequency', fontsize=24, fontname="Cambria")
+        else:
+            plt.ylabel('$|S|$', color='gray', fontsize=16, fontname="Cambria")
+            plt.title('|S| vs frequency', fontsize=24, fontname="Cambria")
 
-    ax.plot(f, s, '+', ms=8, mew=2, color='#1946BA')
+        ax.plot(f, s, '+', ms=8, mew=2, color='#1946BA')
 
-    ax.plot(f, fitted_mag_s, '-', linewidth=3, color='#FF8400')
+        ax.plot(f, fitted_mag_s, '-', linewidth=3, color='#FF8400')
 
-    try:
-        st.pyplot(fig)
-    except:
-        st.write('Unexpected plot error')
+        try:
+            st.pyplot(fig)
+        except:
+            st.write('Unexpected plot error')
+            reload_plot=st.button('Reload')
+            if reload_plot:
+                st.experimental_rerun()
 
 def run(calc_function):
     # info
@@ -271,6 +289,7 @@ def run(calc_function):
         column_count, validator_status = count_columns(data)
 
     f, r, i = [], [], []
+    pair_count = 1
     if validator_status == "data parsed":
         input_ports_pair = 1
         if column_count > 3:
@@ -301,11 +320,11 @@ def run(calc_function):
         # make accessible a specific range of numerical data choosen with interactive plot
         # line id, line id
         interval_start, interval_end = plot_interact_abs_from_f(f,r,i)
-    
         f_cut, r_cut, i_cut = [], [], []
         if validator_status == "data parsed":
             f_cut, r_cut, i_cut = (x[interval_start:interval_end]
                                    for x in (f, r, i))
+            # show cutting result
             with st.expander("Selected data interval as .s1p"):
                 st_ace(value="# Hz S RI R 50\n" +
                        ''.join(f'{f_cut[x]} {r_cut[x]} {i_cut[x]}\n'
@@ -314,7 +333,7 @@ def run(calc_function):
                        auto_update=True,
                        placeholder="Selection is empty",
                        height="150px")
-    
+            # can't find a circle without 3 points
             if len(f_cut) < 3:
                 validator_status = "Choosen interval is too small, add more points"
 
@@ -376,6 +395,48 @@ def run(calc_function):
 
         st.latex('f_L =' + f'{format(fl, precision)}' + r'\text{ }Hz')
 
+        # in case of .snp with n>=2
+        if pair_count >= 4:
+            if 'make_transmission_measurement' not in st.session_state:
+                st.session_state['make_transmission_measurement'] = False
+
+            st.session_state['make_transmission_measurement'] = st.checkbox(
+                "Make transmission measurement on S11 & S22",
+                value=st.session_state['make_transmission_measurement'])
+
+            if st.session_state['make_transmission_measurement']:
+                def find_k(port_pair:int):
+                    f, r, i, validator_status = unpack_data(data,
+                                (port_pair - 1) * 2 + 1,
+                                column_count,
+                                input_ref_resistance,
+                                select_measurement_parameter,
+                                select_data_representation)
+                    if validator_status!='data parsed':
+                        st.write(validator_status)
+                        return 0,0
+                    else:
+                        f = [x * hz for x in f]
+                        f, r, i = (x[interval_start:interval_end]
+                                       for x in (f, r, i))
+                        Q0, sigmaQ0, QL, sigmaQL, k, ks, circle_params, fl, fitted_mag_s = calc_function(
+                        f, r, i, check_coupling_loss)
+                        return QL,k
+                # S11
+                QL1,k1=find_k(1)
+                # S22
+                QL2,k2=find_k(4)
+                QL=(QL1+QL2)/2
+                k_in = k1*(1+k2)/(1-k1*k2)
+                k_out = k2*(1+k1)/(1-k1*k2)
+                k=k_in+k_out
+                Q0 = QL*(1+k)
+                if Q0 <= 0 or QL <= 0:
+                    st.write("Negative Q detected, fitting may be inaccurate!")
+                show_result_in_latex('Q_0', Q0)
+                show_result_in_latex('Q_L', QL)
+                show_result_in_latex(r'\kappa', k)
+                
         with st.expander("Show static abs(S) plot"):
             plot_abs_vs_f(f_cut, r_cut, i_cut, fitted_mag_s)
 
